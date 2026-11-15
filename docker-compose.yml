@@ -1,0 +1,30 @@
+# 本地开发依赖。只启动 postgres；mailhog 需要时再 docker compose --profile mail up -d mailhog。
+services:
+  postgres:
+    image: postgres:17
+    container_name: jiaowogui-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-demo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-demo}
+      POSTGRES_DB: ${POSTGRES_DB:-jiaowogui}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - jiaowogui-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-demo} -d ${POSTGRES_DB:-jiaowogui}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: jiaowogui-mailhog
+    profiles: ["mail"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  jiaowogui-pgdata:

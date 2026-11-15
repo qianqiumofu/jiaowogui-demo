@@ -1,0 +1,10 @@
+{
+  "code": "NOT_IMPLEMENTED",
+  "message": "该能力尚未实现，属于框架占位。",
+  "request_id": "req_synth_0004",
+  "details": {
+    "capability": "pass:scan",
+    "owner": "B",
+    "stage": "M3"
+  }
+}

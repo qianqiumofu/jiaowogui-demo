@@ -1,0 +1,9 @@
+{
+  "code": "SCOPE_UNRESOLVED",
+  "message": "负责关系尚未由目录同步，暂无法查询负责学生。",
+  "request_id": "req_synth_0002",
+  "details": {
+    "action": "risk:read",
+    "resolved_by": "pending:directory.get_counselors"
+  }
+}

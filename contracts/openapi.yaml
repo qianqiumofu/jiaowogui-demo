@@ -1,0 +1,298 @@
+openapi: 3.1.0
+info:
+  title: 交我归 Demo API
+  version: 0.1.0
+  description: >-
+    两人共用契约。规则以业务规则基线为唯一来源；字段 snake_case，枚举大写字符串，
+    时间带时区，ID 为不透明字符串。列表响应统一 items/next_cursor，成功响应直接返回对象本身，
+    错误响应统一 code/message/request_id/details。
+
+servers:
+  - url: http://localhost:8000/api/v1
+
+paths:
+  /auth/demo-accounts:
+    get:
+      summary: 列出合成登录账号
+      responses:
+        "200":
+          description: 账号列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DemoAccount"
+
+  /auth/mock-login:
+    post:
+      summary: 模拟学校统一身份登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login_name, password]
+              properties:
+                login_name: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: 会话令牌与上下文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: 口令错误或账号不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /me:
+    get:
+      summary: 当前会话上下文
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 上下文
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionContext"
+        "401":
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/role-switch:
+    post:
+      summary: 切换到该账号已被授予的另一角色
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "200":
+          description: 新会话令牌（旧令牌立即失效）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "403":
+          description: 该账号未被授予此角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/logout:
+    post:
+      summary: 退出并销毁会话
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 已退出
+
+  /authz/actions:
+    get:
+      summary: 当前角色可执行动作
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 动作清单
+
+  /reservations:
+    get:
+      summary: 列出预约（按 scope 过滤）
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: service_date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: 空列表为 M2 之前的占位
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemList"
+    post:
+      summary: 创建当日晚归预约
+      security: [{ bearerAuth: [] }]
+      responses:
+        "501":
+          description: 能力未实现
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /risk-events:
+    get:
+      summary: 按授权范围列出风险事件
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemList"
+        "403":
+          description: 无权或负责关系缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /buildings/{building_id}/tonight:
+    get:
+      summary: 宿管当晚名单
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: building_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "501":
+          description: 能力未实现
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /return-records:
+    get:
+      summary: 正式返宿记录（唯一写入方为 B）
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemList"
+
+  /duty-assignments:
+    get:
+      summary: 值班与代班范围
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemList"
+
+  /device/scan:
+    post:
+      summary: 模拟终端扫码核销
+      description: 使用设备身份认证，不使用学生会话；契约细节在 M3 冻结。
+      responses:
+        "501":
+          description: 能力未实现
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /demo/clock:
+    get:
+      summary: 读取演示时钟
+      responses:
+        "200":
+          description: 当前业务时间与偏移分钟数
+    post:
+      summary: 推进演示时钟
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offset_minutes]
+              properties:
+                offset_minutes: { type: integer }
+      responses:
+        "200":
+          description: 新的业务时间
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Role:
+      type: string
+      enum: [STUDENT, DORM_MANAGER, COUNSELOR, CAMPUS]
+
+    DemoAccount:
+      type: object
+      properties:
+        login_name: { type: string }
+        display_name: { type: string }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+        password: { type: string, description: 仅 Demo 合成口令 }
+
+    SessionContext:
+      type: object
+      properties:
+        session_id: { type: string }
+        user_id: { type: string }
+        school_id: { type: string }
+        display_name: { type: string }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+        active_role: { $ref: "#/components/schemas/Role" }
+        scope:
+          type: object
+          additionalProperties: true
+          description: 数据范围；resolved_by 标明由哪个适配器解析
+        expires_at: { type: string, format: date-time }
+
+    AuthSession:
+      type: object
+      properties:
+        token: { type: string }
+        session: { $ref: "#/components/schemas/SessionContext" }
+
+    ItemList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { type: object, additionalProperties: true }
+        next_cursor: { type: ["string", "null"] }
+
+    Error:
+      type: object
+      required: [code, message, request_id, details]
+      properties:
+        code:
+          type: string
+          description: >-
+            错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID,
+            FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED,
+            DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR。
+            新增错误码必须同时更新文档与前端处理。
+        message: { type: string }
+        request_id: { type: string }
+        details: { type: object, additionalProperties: true }

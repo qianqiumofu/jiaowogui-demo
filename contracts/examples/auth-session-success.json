@@ -1,0 +1,23 @@
+{
+  "token": "synth-token-not-a-real-secret",
+  "session": {
+    "session_id": "sess_synth_0001",
+    "user_id": "usr_synth_0002",
+    "school_id": "T2001",
+    "display_name": "李辅导员（一人多角色）",
+    "roles": [
+      "COUNSELOR",
+      "STUDENT"
+    ],
+    "active_role": "COUNSELOR",
+    "scope": {
+      "counselor_user_id": "usr_synth_0002",
+      "student_ids": [
+        "stu_synth_0001",
+        "stu_synth_0002"
+      ],
+      "resolved_by": "directory.get_counselors"
+    },
+    "expires_at": "2026-11-16T09:30:00+08:00"
+  }
+}

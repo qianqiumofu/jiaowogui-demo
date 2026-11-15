@@ -1,0 +1,20 @@
+{
+  "token": "synth-token-after-rotation",
+  "session": {
+    "session_id": "sess_synth_0002",
+    "user_id": "usr_synth_0002",
+    "school_id": "T2001",
+    "display_name": "李辅导员（一人多角色）",
+    "roles": [
+      "COUNSELOR",
+      "STUDENT"
+    ],
+    "active_role": "STUDENT",
+    "scope": {
+      "student_id": "stu_synth_0009",
+      "resolved_by": "identity"
+    },
+    "expires_at": "2026-11-16T09:30:00+08:00",
+    "rotated_from": "sess_synth_0001"
+  }
+}

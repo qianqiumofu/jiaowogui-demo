@@ -1,0 +1,9 @@
+{
+  "code": "VERSION_CONFLICT",
+  "message": "预约已被更新，请重新获取最新版本。",
+  "request_id": "req_synth_0003",
+  "details": {
+    "expected_version": 3,
+    "current_version": 5
+  }
+}

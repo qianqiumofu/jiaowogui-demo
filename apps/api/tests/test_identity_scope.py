@@ -85,3 +85,24 @@ def test_authz_actions_reflect_role(client) -> None:
     body = client.get(f"{API}/authz/actions", headers=auth(token)).json()
     assert "reservation:create" in body["allowed_actions"]
     assert "manual_return:create" not in body["allowed_actions"]
+
+
+def test_counselor_cannot_switch_duty(client) -> None:
+    token = token_for(client, "counselor")
+    response = client.post(f"{API}/duty-assignments/switch", json={}, headers=auth(token))
+    assert response.status_code == 403
+    assert response.json()["code"] == "FORBIDDEN_ACTION"
+
+
+def test_dorm_manager_reaches_duty_switch_placeholder(client) -> None:
+    token = token_for(client, "dorm")
+    response = client.post(f"{API}/duty-assignments/switch", json={}, headers=auth(token))
+    assert response.status_code == 501
+    assert response.json()["code"] == "NOT_IMPLEMENTED"
+
+
+def test_campus_cannot_list_reservations(client) -> None:
+    token = token_for(client, "campus")
+    response = client.get(f"{API}/reservations", headers=auth(token))
+    assert response.status_code == 403
+    assert response.json()["code"] == "FORBIDDEN_ACTION"

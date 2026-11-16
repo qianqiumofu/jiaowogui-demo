@@ -127,6 +127,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ItemList"
+        "403":
+          description: 当前角色未被授予 reservation:read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     post:
       summary: 创建当日晚归预约
       security: [{ bearerAuth: [] }]
@@ -196,6 +202,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ItemList"
+
+  /duty-assignments/switch:
+    post:
+      summary: 跨楼栋代班切换
+      description: 动作 duty:switch 仅授予宿管；生效区间与值班范围校验在 M1 冻结。
+      security: [{ bearerAuth: [] }]
+      responses:
+        "403":
+          description: 当前角色未被授予 duty:switch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "501":
+          description: 能力未实现
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /device/scan:
     post:

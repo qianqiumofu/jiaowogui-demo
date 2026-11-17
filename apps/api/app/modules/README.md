@@ -7,7 +7,7 @@
 | --- | --- | --- | --- |
 | identity | A | 已可用：模拟统一登录、会话轮换、多角色切换 | 真实 OIDC/CAS 替换 adapters/mock_accounts.py |
 | authorization | A | 已可用：动作权限、数据范围、代班缓存 | 接入 B 的目录负责关系 |
-| reservation | A | 占位 | M2 预约唯一性、无限改期、修订历史 |
+| reservation | A | 已可用：当夜唯一、自动通过、无限改期、取消恢复、版本冲突 409、只追加修订历史 | B 的返宿写入后调 `service.mark_fulfilled`；接 23:30 快照 |
 | verification | A | 空 | M3 现场核验 ±30 分钟与签码原子协调 |
 | risk | A | 占位 | M4 规则引擎、弹窗、周期邮件、跟进 |
 | reports | A | 占位 | M4 日报周报与订阅 |

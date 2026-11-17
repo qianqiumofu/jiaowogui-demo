@@ -1,0 +1,10 @@
+{
+  "code": "RESERVATION_CANCELLED",
+  "message": "当夜预约已取消，请使用恢复接口复用原预约。",
+  "request_id": "req_synth_0004",
+  "details": {
+    "reservation_id": "resv_synth_0001",
+    "status": "CANCELLED",
+    "version": 3
+  }
+}

@@ -10,6 +10,7 @@ ACTIONS: dict[str, set[Role]] = {
     "reservation:create": {Role.STUDENT},
     "reservation:update": {Role.STUDENT},
     "reservation:cancel": {Role.STUDENT},
+    "reservation:restore": {Role.STUDENT},
     "reservation:read": {Role.STUDENT, Role.DORM_MANAGER, Role.COUNSELOR},
     "verification:create": {Role.STUDENT},
     "pass:display": {Role.STUDENT},

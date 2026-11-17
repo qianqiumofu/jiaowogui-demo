@@ -1,0 +1,11 @@
+{
+  "id": "resv_synth_0001",
+  "student_id": "stu_synth_0001",
+  "service_date": "2026-11-16",
+  "status": "ACTIVE",
+  "planned_return_at": "2026-11-17T01:30:00+08:00",
+  "reason": "实验室跑实验，预计一点半后回。",
+  "version": 2,
+  "created_at": "2026-11-16T19:02:11+08:00",
+  "updated_at": "2026-11-16T23:41:52+08:00"
+}

@@ -19,8 +19,11 @@ if not database_url:
     raise RuntimeError("缺少 DATABASE_URL，请先在 apps/api/.env 配置。")
 config.set_main_option("sqlalchemy.url", database_url)
 
-# B 建立 models.py 后改为 from app.db.base import Base; target_metadata = Base.metadata
-target_metadata = None
+# 各模块模型统一注册到 app.db.Base；B 追加目录模型后无需再改这里。
+from app.db import Base  # noqa: E402
+import app.db.models  # noqa: F401,E402
+
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

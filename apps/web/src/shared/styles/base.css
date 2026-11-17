@@ -666,3 +666,191 @@ input {
   flex-direction: column;
   gap: 16px;
 }
+
+textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.resv__none {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.resv__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-raise);
+  animation: rise var(--motion);
+}
+
+.resv__card--cancelled {
+  border-left-color: var(--warn);
+}
+
+.resv__card--fulfilled,
+.resv__card--closed {
+  border-left-color: var(--ink-faint);
+}
+
+.resv__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.resv__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.resv__version {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.resv__time {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 0.5px;
+}
+
+.resv__reason {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.resv__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.resv__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resv__field--wide {
+  flex: 1 1 260px;
+}
+
+.resv__label {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.resv__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.resv__primary,
+.resv__ghost {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  transition: background var(--motion), border-color var(--motion), color var(--motion);
+}
+
+.resv__primary {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.resv__primary:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.resv__ghost {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-dim);
+}
+
+.resv__ghost:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.resv__primary:disabled,
+.resv__ghost:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.resv__notice {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.resv__notice--bad {
+  color: var(--danger);
+}
+
+.resv__log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resv__logItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.resv__logItem:last-child {
+  border-bottom: none;
+}
+
+.resv__logSource {
+  min-width: 56px;
+  color: var(--accent);
+}
+
+.resv__logTime,
+.resv__logPlanned {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.resv__logReason {
+  flex: 1 1 200px;
+  color: var(--ink-dim);
+}

@@ -5,6 +5,8 @@ import type {
   ClockState,
   DemoAccount,
   ListResult,
+  Reservation,
+  ReservationRevision,
   Role,
   SessionContext,
 } from './types'
@@ -90,7 +92,33 @@ export const api = {
     return result
   },
   allowedActions: () => request<AllowedActions>('/authz/actions'),
-  reservations: () => request<ListResult<Record<string, unknown>>>('/reservations'),
+  reservations: (serviceDate?: string) =>
+    request<ListResult<Reservation>>(
+      `/reservations${serviceDate ? `?service_date=${serviceDate}` : ''}`,
+    ),
+  tonightReservation: () => request<Reservation | null>('/reservations/tonight'),
+  createReservation: (body: { planned_return_at: string; reason?: string }) =>
+    request<Reservation>('/reservations', { method: 'POST', body: JSON.stringify(body) }),
+  updateReservation: (
+    id: string,
+    body: { expected_version: number; planned_return_at?: string; reason?: string },
+  ) =>
+    request<Reservation>(`/reservations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  cancelReservation: (id: string, expectedVersion: number) =>
+    request<Reservation>(`/reservations/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }),
+  restoreReservation: (id: string, expectedVersion: number) =>
+    request<Reservation>(`/reservations/${id}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }),
+  reservationRevisions: (id: string) =>
+    request<ListResult<ReservationRevision>>(`/reservations/${id}/revisions`),
   buildingTonight: (buildingId: string) =>
     request<ListResult<Record<string, unknown>>>(`/buildings/${buildingId}/tonight`),
   dutyAssignments: () => request<ListResult<Record<string, unknown>>>('/duty-assignments'),

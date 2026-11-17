@@ -350,7 +350,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 列出预约（按 scope 过滤） */
+        /**
+         * 按授权范围列出预约
+         * @description 学生返回本人当夜及历史预约；辅导员与宿管在目录关系落地前返回 SCOPE_UNRESOLVED，不得返回空列表伪装成「没有预约」。
+         */
         get: {
             parameters: {
                 query?: {
@@ -362,16 +365,16 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 空列表为 M2 之前的占位 */
+                /** @description 预约列表 */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ItemList"];
+                        "application/json": components["schemas"]["ReservationList"];
                     };
                 };
-                /** @description 当前角色未被授予 reservation:read */
+                /** @description 角色未授予 reservation:read，或范围依赖的目录关系未落地 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -383,7 +386,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** 创建当日晚归预约 */
+        /**
+         * 创建当日晚归预约
+         * @description service_date 由服务端时钟判定为当夜，客户端不可指定其他夜晚（R05）。 全部自动通过（R06）。当夜已存在 ACTIVE/FULFILLED 预约返回 RESERVATION_EXISTS；存在 CANCELLED 预约返回 RESERVATION_CANCELLED， 须走恢复接口复用同一 ID。
+         */
         post: {
             parameters: {
                 query?: never;
@@ -391,10 +397,27 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        planned_return_at: string;
+                        reason?: string;
+                    };
+                };
+            };
             responses: {
-                /** @description 能力未实现 */
-                501: {
+                /** @description 已创建并自动通过 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Reservation"];
+                    };
+                };
+                /** @description 当夜已有预约或需走恢复 */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -404,6 +427,290 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservations/tonight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 当前业务夜的本人预约（服务端判定 service_date）
+         * @description 供学生端使用，避免客户端推算业务日；无预约时返回 null。 仅学生角色可用。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 预约对象或 null */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Reservation"] | null;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservations/{reservation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 改期或修改原因（次数不限）
+         * @description R07：不受原预约时间窗口约束，可改到本业务夜门禁时段内任意时间； 已返宿（FULFILLED）或业务夜已结束（CLOSED）返回 409 RESERVATION_NOT_EDITABLE。expected_version 过期返回 409 VERSION_CONFLICT。
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    reservation_id: components["parameters"]["ReservationId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version: number;
+                        /** Format: date-time */
+                        planned_return_at?: string;
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description 更新后的预约 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Reservation"];
+                    };
+                };
+                /** @description 预约不存在或不属于当前范围 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 版本冲突或当前状态不可修改 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/reservations/{reservation_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取消预约
+         * @description 已返宿（FULFILLED）或业务夜结束（CLOSED）不可取消。取消保留 ID 供恢复。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    reservation_id: components["parameters"]["ReservationId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description 取消后的预约 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Reservation"];
+                    };
+                };
+                /** @description 预约不存在或不属于当前范围 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 版本冲突或当前状态不可取消 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservations/{reservation_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 恢复已取消的当夜预约（复用同一 ID）
+         * @description 基线「取消后恢复同一预约 ID，不能新建第二条」；仅 CANCELLED 可恢复。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    reservation_id: components["parameters"]["ReservationId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description 恢复后的预约 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Reservation"];
+                    };
+                };
+                /** @description 预约不存在或不属于当前范围 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 版本冲突或当前状态不可恢复 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reservations/{reservation_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 预约修订历史（只追加） */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    reservation_id: components["parameters"]["ReservationId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 按 version 升序的修订记录 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RevisionList"];
+                    };
+                };
+                /** @description 预约不存在或不属于当前范围 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -669,7 +976,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 当前业务时间与偏移分钟数 */
+                /** @description 当前业务时间、服务端判定的业务夜与偏移分钟数 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -778,7 +1085,59 @@ export interface components {
         ClockState: {
             /** Format: date-time */
             now: string;
+            /**
+             * Format: date
+             * @description 服务端判定的当前业务夜 D（[D 06:00, D+1 06:00)），供客户端构造当夜时间。
+             */
+            service_date: string;
             offset_minutes: number;
+        };
+        /** @enum {string} */
+        ReservationStatus: "ACTIVE" | "CANCELLED" | "FULFILLED" | "CLOSED";
+        /** @description 一晚一条；(student_id, service_date) 唯一。version 从 1 起，每次学生动作 +1； 系统关闭（CLOSED）不加 version。修改/取消/恢复必须携带 expected_version。 */
+        Reservation: {
+            id: string;
+            student_id: string;
+            /** Format: date */
+            service_date: string;
+            status: components["schemas"]["ReservationStatus"];
+            /**
+             * Format: date-time
+             * @description 必须落在该业务夜门禁时段 [D+1 00:00, 06:00)，服务端判定。
+             */
+            planned_return_at: string;
+            /** @description 自由文本，上限 500 字符（Demo 默认）；不作为拒绝依据（R06、R17）。 */
+            reason: string;
+            version: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @enum {string} */
+        ReservationRevisionSource: "CREATE" | "RESCHEDULE" | "CANCEL" | "RESTORE" | "CLOSE";
+        /** @description 只追加的修订历史；CREATE 记录 version=1 的初始内容。 */
+        ReservationRevision: {
+            id: string;
+            reservation_id: string;
+            version: number;
+            source: components["schemas"]["ReservationRevisionSource"];
+            status: components["schemas"]["ReservationStatus"];
+            /** Format: date-time */
+            planned_return_at: string;
+            reason: string;
+            /** @description 学生 user_id；CLOSE 等系统事件为 null */
+            changed_by?: string | null;
+            /** Format: date-time */
+            changed_at: string;
+        };
+        ReservationList: {
+            items: components["schemas"]["Reservation"][];
+            next_cursor: string | null;
+        };
+        RevisionList: {
+            items: components["schemas"]["ReservationRevision"][];
+            next_cursor: string | null;
         };
         ItemList: {
             items: {
@@ -787,7 +1146,7 @@ export interface components {
             next_cursor: string | null;
         };
         Error: {
-            /** @description 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR。 新增错误码必须同时更新文档与前端处理。 */
+            /** @description 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR, VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED, RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND。 新增错误码必须同时更新文档与前端处理。 */
             code: string;
             message: string;
             request_id: string;
@@ -797,7 +1156,9 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        ReservationId: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;

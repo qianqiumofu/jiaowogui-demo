@@ -10,6 +10,8 @@ export type DemoAccount = components['schemas']['DemoAccount']
 export type AllowedActions = components['schemas']['AllowedActions']
 export type ScopeCheck = components['schemas']['ScopeCheck']
 export type ClockState = components['schemas']['ClockState']
+export type Reservation = components['schemas']['Reservation']
+export type ReservationRevision = components['schemas']['ReservationRevision']
 export type ApiErrorBody = components['schemas']['Error']
 
 export interface ListResult<T> {

@@ -9,10 +9,7 @@ def test_student_reads_own_scope_and_is_denied_building_list(client) -> None:
     assert context["active_role"] == "STUDENT"
     assert context["scope"]["student_id"] == "stu_synth_0001"
 
-    listed = client.get(f"{API}/reservations", headers=auth(token))
-    assert listed.status_code == 200
-    assert listed.json() == {"items": [], "next_cursor": None}
-
+    # 预约列表已接入真实数据库，其行为在 tests/test_reservation_flow.py（需 PostgreSQL）覆盖。
     denied = client.get(f"{API}/buildings/bldg_a1/tonight", headers=auth(token))
     assert denied.status_code == 403
     assert denied.json()["code"] == "FORBIDDEN_ACTION"

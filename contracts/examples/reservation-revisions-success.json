@@ -1,0 +1,27 @@
+{
+  "items": [
+    {
+      "id": "rev_synth_0001",
+      "reservation_id": "resv_synth_0001",
+      "version": 1,
+      "source": "CREATE",
+      "status": "ACTIVE",
+      "planned_return_at": "2026-11-17T00:40:00+08:00",
+      "reason": "实验室跑实验，预计十二点后回。",
+      "changed_by": "usr_synth_student_0001",
+      "changed_at": "2026-11-16T19:02:11+08:00"
+    },
+    {
+      "id": "rev_synth_0002",
+      "reservation_id": "resv_synth_0001",
+      "version": 2,
+      "source": "RESCHEDULE",
+      "status": "ACTIVE",
+      "planned_return_at": "2026-11-17T01:30:00+08:00",
+      "reason": "实验室跑实验，预计一点半后回。",
+      "changed_by": "usr_synth_student_0001",
+      "changed_at": "2026-11-16T23:41:52+08:00"
+    }
+  ],
+  "next_cursor": null
+}

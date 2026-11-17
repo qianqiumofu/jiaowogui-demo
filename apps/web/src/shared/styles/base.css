@@ -47,13 +47,19 @@ button {
   border-radius: 6px;
 }
 
-input {
+input,
+select,
+textarea {
   font: inherit;
   color: var(--ink);
   background: var(--bg-raise);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
+}
+
+textarea {
+  resize: vertical;
 }
 
 .appRoot {
@@ -665,16 +671,6 @@ input {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-textarea {
-  font: inherit;
-  color: var(--ink);
-  background: var(--bg-raise);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  resize: vertical;
 }
 
 .resv__none {

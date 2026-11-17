@@ -1,6 +1,6 @@
 """统一错误信封、时区口径与演示时钟。"""
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app.core.clock import service_date_of
@@ -36,3 +36,9 @@ def test_demo_clock_crosses_midnight(client) -> None:
     assert state["service_date"] == service_date_of(
         datetime.fromisoformat(state["now"])
     ).isoformat()
+
+    # 门禁时段也一并给出，学生端只按它列举可选时刻，不写死 00:00–06:00。
+    start, end = state["night_window"]
+    assert date.fromisoformat(start[:10]) == date.fromisoformat(state["service_date"]) + timedelta(days=1)
+    assert start[11:19] == "00:00:00" and end[11:19] == "06:00:00"
+    assert start[-6:] == end[-6:] == "+08:00"

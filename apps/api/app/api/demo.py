@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.core.clock import service_date_of
+from app.modules.reservation.service import night_bounds
 
 router = APIRouter(prefix="/demo", tags=["demo"])
 
@@ -20,10 +21,13 @@ def _clock(request: Request):
 
 def _state(clock) -> dict:
     now = clock.now()
+    service_date = service_date_of(now)
+    start, end = night_bounds(service_date, now.tzinfo)
     return {
         "now": now.isoformat(),
-        # 业务夜由服务端判定，客户端只取用，不自行推算跨 06:00 的归属。
-        "service_date": service_date_of(now).isoformat(),
+        # 业务夜与门禁时段都由服务端判定，客户端只取用来列举可选时刻。
+        "service_date": service_date.isoformat(),
+        "night_window": [start.isoformat(), end.isoformat()],
         "offset_minutes": int(clock.offset.total_seconds() // 60),
     }
 

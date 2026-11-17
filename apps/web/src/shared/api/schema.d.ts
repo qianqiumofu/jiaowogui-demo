@@ -1090,6 +1090,8 @@ export interface components {
              * @description 服务端判定的当前业务夜 D（[D 06:00, D+1 06:00)），供客户端构造当夜时间。
              */
             service_date: string;
+            /** @description 当夜门禁时段 [start, end)，端点带时区；客户端只用它列举可选时刻，不自行判定。 */
+            night_window: string[];
             offset_minutes: number;
         };
         /** @enum {string} */

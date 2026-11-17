@@ -12,7 +12,7 @@ const busy = ref(false)
 const notice = ref('')
 const blocked = ref('')
 
-const timeText = ref('01:00')
+const timeText = ref('')
 const reasonText = ref('')
 const mode = ref<'idle' | 'create' | 'edit'>('idle')
 
@@ -36,11 +36,25 @@ const SOURCE_TEXT: Record<string, string> = {
 
 const statusText = computed(() => STATUS_TEXT[reservation.value?.status ?? ''] ?? '')
 
-// 门禁时段直接由业务夜推给下一日，时刻与偏移都取自服务端时钟。
+// 门禁时段由服务端给出（night_window），这里只按它列举可选时刻，不写死 00:00–06:00。
+const SLOT_STEP_MINUTES = 15
+
+const slots = computed<string[]>(() => {
+  const window = clock.value?.night_window
+  if (!window || window.length !== 2) return []
+  const [start, end] = window
+  const day = start.slice(0, 10)
+  const limit = end.slice(0, 10) === day ? toMinutes(end) : 24 * 60
+  const out: string[] = []
+  for (let minute = toMinutes(start); minute < limit; minute += SLOT_STEP_MINUTES) out.push(slotOf(day, minute))
+  return out
+})
+
 const gateLabel = computed(() => {
-  const serviceDate = clock.value?.service_date ?? ''
-  if (!serviceDate) return '等待后端时钟'
-  return `${serviceDate} 业务夜 · 返宿时段 ${nextDay(serviceDate)} 00:00–06:00`
+  const window = clock.value?.night_window
+  if (!window || window.length !== 2) return '等待后端时钟'
+  const [start, end] = window
+  return `${start.slice(5, 10)} 业务夜 · 返宿时段 ${start.slice(11, 16)}–${end.slice(11, 16)}`
 })
 
 const nightTime = computed(() => {
@@ -50,29 +64,42 @@ const nightTime = computed(() => {
 
 const canAct = computed(() => reservation.value?.status === 'ACTIVE')
 
-function nextDay(serviceDate: string): string {
-  const day = new Date(`${serviceDate}T00:00:00Z`)
-  day.setUTCDate(day.getUTCDate() + 1)
-  return day.toISOString().slice(0, 10)
+function toMinutes(moment: string): number {
+  return Number(moment.slice(11, 13)) * 60 + Number(moment.slice(14, 16))
 }
 
-function toPlannedAt(hhmm: string): string {
-  const serviceDate = clock.value?.service_date ?? ''
+function slotOf(day: string, minute: number): string {
+  return `${day}T${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`
+}
+
+function firstUpcomingSlot(): string {
+  const now = clock.value?.now.slice(0, 16) ?? ''
+  const list = slots.value
+  return list.find((slot) => slot >= now) ?? list[0] ?? ''
+}
+
+function slotForPlanned(planned: string): string {
+  const snapped = slotOf(planned.slice(0, 10), Math.floor(toMinutes(planned) / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES)
+  return slots.value.includes(snapped) ? snapped : firstUpcomingSlot()
+}
+
+function toPlannedAt(slot: string): string {
   const offset = (clock.value?.now ?? '').slice(-6) || '+08:00'
-  return `${nextDay(serviceDate)}T${hhmm}:00${offset}`
+  return `${slot}:00${offset}`
 }
 
 function startCreate() {
   mode.value = 'create'
   notice.value = ''
   reasonText.value = ''
+  timeText.value = firstUpcomingSlot()
 }
 
 function startEdit() {
   if (!reservation.value) return
   mode.value = 'edit'
   notice.value = ''
-  timeText.value = reservation.value.planned_return_at.slice(11, 16)
+  timeText.value = slotForPlanned(reservation.value.planned_return_at)
   reasonText.value = reservation.value.reason
 }
 
@@ -193,7 +220,7 @@ onMounted(async () => {
 
       <div v-else-if="!reservation && mode !== 'create'" class="resv__none">
         <p class="panel__placeholderTitle">今夜还没有预约。</p>
-        <p class="panel__placeholderNote">晚于 00:00 返宿前提交一条即可，不需要审批。</p>
+        <p class="panel__placeholderNote">在返宿时段内选一个时刻提交即可，不需要审批。</p>
         <button class="resv__primary" type="button" :disabled="busy" @click="startCreate">
           预约今夜
         </button>
@@ -202,14 +229,16 @@ onMounted(async () => {
       <div v-else-if="!reservation" class="resv__form">
         <label class="resv__field">
           <span class="resv__label">预计返宿时刻</span>
-          <input v-model="timeText" type="time" min="00:00" max="05:59" step="60" />
+          <select v-model="timeText">
+            <option v-for="slot in slots" :key="slot" :value="slot">{{ slot.slice(11, 16) }}</option>
+          </select>
         </label>
         <label class="resv__field resv__field--wide">
           <span class="resv__label">原因</span>
           <textarea v-model="reasonText" rows="3" placeholder="一句话说明去向即可。" />
         </label>
         <div class="resv__actions">
-          <button class="resv__primary" type="button" :disabled="busy" @click="submitCreate">
+          <button class="resv__primary" type="button" :disabled="busy || !slots.length" @click="submitCreate">
             提交预约
           </button>
           <button class="resv__ghost" type="button" :disabled="busy" @click="cancelEditing">收起</button>
@@ -245,14 +274,23 @@ onMounted(async () => {
         <div v-else class="resv__form">
           <label class="resv__field">
             <span class="resv__label">新的返宿时刻</span>
-            <input v-model="timeText" type="time" min="00:00" max="05:59" step="60" />
+            <select v-model="timeText">
+              <option v-for="slot in slots" :key="slot" :value="slot">{{ slot.slice(11, 16) }}</option>
+            </select>
           </label>
           <label class="resv__field resv__field--wide">
             <span class="resv__label">原因</span>
             <textarea v-model="reasonText" rows="3" />
           </label>
           <div class="resv__actions">
-            <button class="resv__primary" type="button" :disabled="busy" @click="submitEdit">保存改期</button>
+            <button
+              class="resv__primary"
+              type="button"
+              :disabled="busy || !slots.length"
+              @click="submitEdit"
+            >
+              保存改期
+            </button>
             <button class="resv__ghost" type="button" :disabled="busy" @click="cancelEditing">收起</button>
           </div>
         </div>

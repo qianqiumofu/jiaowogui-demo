@@ -588,13 +588,19 @@ components:
 
     ClockState:
       type: object
-      required: [now, service_date, offset_minutes]
+      required: [now, service_date, night_window, offset_minutes]
       properties:
         now: { type: string, format: date-time }
         service_date:
           type: string
           format: date
           description: 服务端判定的当前业务夜 D（[D 06:00, D+1 06:00)），供客户端构造当夜时间。
+        night_window:
+          type: array
+          description: 当夜门禁时段 [start, end)，端点带时区；客户端只用它列举可选时刻，不自行判定。
+          items: { type: string, format: date-time }
+          minItems: 2
+          maxItems: 2
         offset_minutes: { type: integer }
 
     ReservationStatus:

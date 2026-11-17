@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "npm run generate:api && vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
+    "generate:api": "openapi-typescript ../../contracts/openapi.yaml -o src/shared/api/schema.d.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
+    "openapi-typescript": "^7.13.0",
     "typescript": "~5.9.0",
     "vite": "^7.0.0",
     "vue-tsc": "^3.0.0"

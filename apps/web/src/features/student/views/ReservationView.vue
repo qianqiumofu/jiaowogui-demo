@@ -36,10 +36,12 @@ const SOURCE_TEXT: Record<string, string> = {
 
 const statusText = computed(() => STATUS_TEXT[reservation.value?.status ?? ''] ?? '')
 
-// 门禁时段由服务端给出（night_window），这里只按它列举可选时刻，不写死 00:00–06:00。
+// 门禁时段由服务端给出（night_window），这里只按它列举档位，不写死 00:00–06:00。
 const SLOT_STEP_MINUTES = 15
 
-const slots = computed<string[]>(() => {
+const nowStamp = computed(() => (clock.value?.now ?? '').slice(0, 16))
+
+const allSlots = computed<string[]>(() => {
   const window = clock.value?.night_window
   if (!window || window.length !== 2) return []
   const [start, end] = window
@@ -49,6 +51,11 @@ const slots = computed<string[]>(() => {
   for (let minute = toMinutes(start); minute < limit; minute += SLOT_STEP_MINUTES) out.push(slotOf(day, minute))
   return out
 })
+
+// 与演示时钟联动：已过去的档位不再出现在选项里，当前一档保留表示「现在就回」。
+const slots = computed<string[]>(() =>
+  nowStamp.value ? allSlots.value.filter((slot) => slot >= nowStamp.value) : allSlots.value,
+)
 
 const gateLabel = computed(() => {
   const window = clock.value?.night_window
@@ -73,13 +80,12 @@ function slotOf(day: string, minute: number): string {
 }
 
 function firstUpcomingSlot(): string {
-  const now = clock.value?.now.slice(0, 16) ?? ''
-  const list = slots.value
-  return list.find((slot) => slot >= now) ?? list[0] ?? ''
+  return slots.value[0] ?? ''
 }
 
 function slotForPlanned(planned: string): string {
   const snapped = slotOf(planned.slice(0, 10), Math.floor(toMinutes(planned) / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES)
+  // 原时刻已经过去了就往前对档，不让下拉停在一个空值上。
   return slots.value.includes(snapped) ? snapped : firstUpcomingSlot()
 }
 
@@ -113,6 +119,8 @@ async function refresh() {
   reservation.value = tonight
   clock.value = state
   if (mode.value === 'create' && tonight) mode.value = 'idle'
+  // 时钟推进后原来选中的一档可能已过期，重新对到可选档位，避免提交一个过去时刻。
+  if (mode.value !== 'idle' && !slots.value.includes(timeText.value)) timeText.value = firstUpcomingSlot()
 }
 
 async function run(action: () => Promise<Reservation>, done: string) {
@@ -229,9 +237,10 @@ onMounted(async () => {
       <div v-else-if="!reservation" class="resv__form">
         <label class="resv__field">
           <span class="resv__label">预计返宿时刻</span>
-          <select v-model="timeText">
+          <select v-if="slots.length" v-model="timeText">
             <option v-for="slot in slots" :key="slot" :value="slot">{{ slot.slice(11, 16) }}</option>
           </select>
+          <p v-else class="resv__notice resv__notice--bad">本夜已没有更晚的可选时刻。</p>
         </label>
         <label class="resv__field resv__field--wide">
           <span class="resv__label">原因</span>
@@ -274,9 +283,10 @@ onMounted(async () => {
         <div v-else class="resv__form">
           <label class="resv__field">
             <span class="resv__label">新的返宿时刻</span>
-            <select v-model="timeText">
+            <select v-if="slots.length" v-model="timeText">
               <option v-for="slot in slots" :key="slot" :value="slot">{{ slot.slice(11, 16) }}</option>
             </select>
+            <p v-else class="resv__notice resv__notice--bad">本夜已没有更晚的可选时刻。</p>
           </label>
           <label class="resv__field resv__field--wide">
             <span class="resv__label">原因</span>

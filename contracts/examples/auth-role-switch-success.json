@@ -14,7 +14,6 @@
       "student_id": "stu_synth_0009",
       "resolved_by": "identity"
     },
-    "expires_at": "2026-11-16T09:30:00+08:00",
-    "rotated_from": "sess_synth_0001"
+    "expires_at": "2026-11-16T09:30:00+08:00"
   }
 }

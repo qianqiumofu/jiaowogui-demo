@@ -103,6 +103,10 @@ paths:
       responses:
         "200":
           description: 已退出
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResult"
 
   /authz/actions:
     get:
@@ -111,6 +115,43 @@ paths:
       responses:
         "200":
           description: 动作清单
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllowedActions"
+
+  /authz/scope-check:
+    get:
+      summary: 检查当前会话对某动作的授权与数据范围
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: action
+          in: query
+          schema: { type: string, default: "reservation:create" }
+      responses:
+        "200":
+          description: 允许时返回角色、动作与范围
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeCheck"
+        "403":
+          description: 动作未授予或范围无法解析
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /authz/roles:
+    get:
+      summary: 系统角色枚举列表
+      responses:
+        "200":
+          description: 角色列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
 
   /reservations:
     get:
@@ -240,6 +281,10 @@ paths:
       responses:
         "200":
           description: 当前业务时间与偏移分钟数
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClockState"
     post:
       summary: 推进演示时钟
       requestBody:
@@ -254,6 +299,10 @@ paths:
       responses:
         "200":
           description: 新的业务时间
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClockState"
 
 components:
   securitySchemes:
@@ -268,6 +317,7 @@ components:
 
     DemoAccount:
       type: object
+      required: [login_name, display_name, roles, password]
       properties:
         login_name: { type: string }
         display_name: { type: string }
@@ -276,8 +326,29 @@ components:
           items: { $ref: "#/components/schemas/Role" }
         password: { type: string, description: 仅 Demo 合成口令 }
 
+    Scope:
+      type: object
+      description: >-
+        数据范围，按角色出现不同字段；resolved_by 标明由哪个适配器解析，
+        pending: 前缀表示等待 B 目录模块覆盖。
+      required: [resolved_by]
+      additionalProperties: true
+      properties:
+        student_id: { type: ["string", "null"] }
+        counselor_user_id: { type: string }
+        student_ids:
+          type: array
+          items: { type: string }
+        building_ids:
+          type: array
+          items: { type: string }
+        scope: { type: string, description: 园区授权标记，如 ALL_AUTHORIZED }
+        resolved_by: { type: string }
+
     SessionContext:
       type: object
+      required:
+        [session_id, user_id, school_id, display_name, roles, active_role, scope, expires_at]
       properties:
         session_id: { type: string }
         user_id: { type: string }
@@ -287,20 +358,63 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Role" }
         active_role: { $ref: "#/components/schemas/Role" }
-        scope:
-          type: object
-          additionalProperties: true
-          description: 数据范围；resolved_by 标明由哪个适配器解析
+        scope: { $ref: "#/components/schemas/Scope" }
         expires_at: { type: string, format: date-time }
 
     AuthSession:
       type: object
+      required: [token, session]
       properties:
         token: { type: string }
         session: { $ref: "#/components/schemas/SessionContext" }
 
+    LogoutResult:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [logged_out] }
+
+    AllowedActions:
+      type: object
+      required: [role, allowed_actions]
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+        allowed_actions:
+          type: array
+          items: { type: string }
+
+    ScopeCheck:
+      type: object
+      required: [role, action, decision, scope]
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+        action: { type: string }
+        decision: { type: string, enum: [ALLOWED] }
+        scope: { $ref: "#/components/schemas/Scope" }
+
+    RoleList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [value]
+            properties:
+              value: { $ref: "#/components/schemas/Role" }
+        next_cursor: { type: ["string", "null"] }
+
+    ClockState:
+      type: object
+      required: [now, offset_minutes]
+      properties:
+        now: { type: string, format: date-time }
+        offset_minutes: { type: integer }
+
     ItemList:
       type: object
+      required: [items, next_cursor]
       properties:
         items:
           type: array

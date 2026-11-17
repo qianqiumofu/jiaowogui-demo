@@ -19,19 +19,33 @@ async function pick(role: Role) {
     session.error = describeError(cause)
   }
 }
+
+async function switchAccount() {
+  try {
+    await session.logout()
+  } catch (cause) {
+    // 后端不可达时 store 已清掉本地令牌，仍要回到账号选择页。
+    session.error = describeError(cause)
+  } finally {
+    await router.replace({ name: 'login' })
+  }
+}
 </script>
 
 <template>
   <div class="roleswitch">
-    <button
-      v-for="role in roles"
-      :key="role"
-      class="roleswitch__btn"
-      :class="{ 'roleswitch__btn--on': session.context?.active_role === role }"
-      type="button"
-      @click="pick(role)"
-    >
-      {{ ROLE_LABEL[role] }}
-    </button>
+    <div v-if="roles.length > 1" class="roleswitch__pill">
+      <button
+        v-for="role in roles"
+        :key="role"
+        class="roleswitch__btn"
+        :class="{ 'roleswitch__btn--on': session.context?.active_role === role }"
+        type="button"
+        @click="pick(role)"
+      >
+        {{ ROLE_LABEL[role] }}
+      </button>
+    </div>
+    <button class="roleswitch__account" type="button" @click="switchAccount">切换账号</button>
   </div>
 </template>

@@ -244,6 +244,12 @@ input {
 
 .roleswitch {
   display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roleswitch__pill {
+  display: inline-flex;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -260,6 +266,20 @@ input {
 }
 
 .roleswitch__btn--on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.roleswitch__account {
+  border: 1px solid var(--line);
+  background: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  color: var(--ink-faint);
+  transition: background var(--motion), color var(--motion);
+}
+
+.roleswitch__account:hover {
   background: var(--accent-soft);
   color: var(--accent);
 }

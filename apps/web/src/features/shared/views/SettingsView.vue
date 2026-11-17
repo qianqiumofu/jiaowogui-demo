@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { ApiRequestError, api } from '@/shared/api/client'
 import type { ClockState } from '@/shared/api/types'
@@ -8,6 +9,7 @@ import { describeError, useSessionStore } from '@/shared/stores/session'
 const clock = ref<ClockState | null>(null)
 const message = ref('')
 const session = useSessionStore()
+const router = useRouter()
 
 async function refresh() {
   try {
@@ -42,8 +44,18 @@ function minutesUntil(hour: number, minute: number): number {
   return Math.round((target.getTime() - now.getTime()) / 60000)
 }
 
-onMounted(refresh)
+async function logoutNow() {
+  try {
+    await session.logout()
+  } catch (cause) {
+    // 会话过期已由 store 视为登出；这里只剩网络不可达等异常，本地令牌已清理，仍跳转登录页。
+    session.error = describeError(cause)
+  } finally {
+    await router.replace({ name: 'login' })
+  }
+}
 
+onMounted(refresh)
 </script>
 
 <template>
@@ -69,7 +81,7 @@ onMounted(refresh)
       </header>
       <p class="panel__line">{{ session.context?.display_name }} · 到期 {{ session.context?.expires_at }}</p>
       <div class="settings__row">
-        <button class="settings__btn" type="button" @click="session.logout()">退出登录</button>
+        <button class="settings__btn" type="button" @click="logoutNow">退出登录</button>
       </div>
     </section>
   </div>

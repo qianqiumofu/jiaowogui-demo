@@ -11,6 +11,8 @@ export const ROLE_LABEL: Record<Role, string> = {
   CAMPUS: '园区',
 }
 
+const SESSION_ENDED_CODES = new Set(['SESSION_INVALID', 'UNAUTHENTICATED'])
+
 export const useSessionStore = defineStore('session', () => {
   const context = ref<SessionContext | null>(null)
   const allowedActions = ref<string[]>([])
@@ -56,6 +58,9 @@ export const useSessionStore = defineStore('session', () => {
   async function logout(): Promise<void> {
     try {
       await api.logout()
+    } catch (cause) {
+      // 会话已过期或已注销时服务端本来就拒绝，本地按登出成功处理；其余错误继续上抛。
+      if (!(cause instanceof ApiRequestError) || !SESSION_ENDED_CODES.has(cause.code)) throw cause
     } finally {
       context.value = null
       allowedActions.value = []

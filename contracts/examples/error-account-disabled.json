@@ -1,0 +1,9 @@
+{
+  "code": "ACCOUNT_DISABLED",
+  "message": "该工号账号已由园区停用，请联系园区管理员。",
+  "request_id": "req_synth_0004",
+  "details": {
+    "login_name": "dorm_a2",
+    "disabled_at": "2026-11-17T18:40:00+08:00"
+  }
+}

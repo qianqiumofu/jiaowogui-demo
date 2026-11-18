@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "id": "job_synth_0002",
+      "job_type": "NOTIFICATION_SEND",
+      "business_key": "NOTIFICATION_SEND:DAILY_REPORT:2026-11-16:usr_synth_0002",
+      "status": "DONE",
+      "planned_at": "2026-11-17T08:30:00+08:00",
+      "attempts": 1,
+      "last_error": null,
+      "done_at": "2026-11-17T08:30:04+08:00",
+      "template": "DAILY_REPORT",
+      "service_date": "2026-11-16",
+      "recipient_user_ids": ["usr_synth_0002"],
+      "created_at": "2026-11-17T08:29:41+08:00"
+    },
+    {
+      "id": "job_synth_0003",
+      "job_type": "NOTIFICATION_SEND",
+      "business_key": "NOTIFICATION_SEND:RISK_ALERT:2026-11-16:usr_synth_0002",
+      "status": "RUNNING",
+      "planned_at": "2026-11-17T08:31:00+08:00",
+      "attempts": 2,
+      "last_error": "第一次投递时数据库连接中断，已按租约重试",
+      "done_at": null,
+      "template": "RISK_ALERT",
+      "service_date": "2026-11-16",
+      "recipient_user_ids": ["usr_synth_0002"],
+      "created_at": "2026-11-17T08:30:55+08:00"
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,9 @@
+{
+  "code": "FORBIDDEN_ACTION",
+  "message": "当前角色没有该操作权限。",
+  "request_id": "req_synth_0003",
+  "details": {
+    "action": "staff_account:create",
+    "role": "DORM_MANAGER"
+  }
+}

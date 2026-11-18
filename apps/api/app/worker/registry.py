@@ -28,7 +28,7 @@ def claim_due_jobs(now: datetime, lease: timedelta) -> list[dict]:
             conn.execute(
                 text(
                     """
-                    SELECT id, job_type, payload
+                    SELECT id, job_type, business_key, payload
                     FROM background_jobs
                     WHERE status = 'PENDING' AND planned_at <= :now
                     ORDER BY planned_at

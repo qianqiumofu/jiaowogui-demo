@@ -25,6 +25,12 @@ def is_night_gate(moment: datetime) -> bool:
     return NIGHT_GATE_START_MINUTE <= minutes < NIGHT_GATE_END_MINUTE
 
 
+def business_iso(moment: datetime) -> str:
+    """把任意来源的时刻统一成业务时区偏移：数据库回读是 UTC，入参带业务时区。"""
+    tz = ZoneInfo(get_settings().business_timezone)
+    return (moment if moment.tzinfo else moment.replace(tzinfo=tz)).astimezone(tz).isoformat()
+
+
 class Clock:
     def __init__(self, tz_name: str) -> None:
         self.tz = ZoneInfo(tz_name)

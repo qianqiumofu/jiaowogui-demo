@@ -1,0 +1,11 @@
+{
+  "code": "NOTIFICATION_RECIPIENT_FORBIDDEN",
+  "message": "风险预警只投递负责辅导员与当班宿管，园区不作为收件人。",
+  "request_id": "req_synth_0004",
+  "details": {
+    "template": "RISK_ALERT",
+    "recipient_user_id": "usr_synth_0004",
+    "role": "CAMPUS",
+    "rule": "R16"
+  }
+}

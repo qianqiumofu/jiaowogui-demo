@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "id": "ntf_synth_0003",
+      "template": "NIGHT_ROSTER",
+      "channel": "INBOX",
+      "subject": "今晚返宿名单 · 2026-11-16 业务夜 · bldg_a1",
+      "body": "王宿管：\n\n23:30 汇总的 bldg_a1 今晚晚归预约共 2 条。\n\n1. 2023S0001 张三｜计划返宿 23:40\n2. 2023S0002 王五｜计划返宿 00:30\n\n23:30 之后学生仍可改期，名单会在下一次刷新时更新；23:30 不是申请截止时间。\n学生实际到达后，按门铃或刷卡记录照常登记。\n\n本条为站内待办，无需回复。",
+      "status": "SENT",
+      "service_date": "2026-11-16",
+      "recipient_email": null,
+      "job_id": "job_synth_0001",
+      "created_at": "2026-11-16T23:30:05+08:00",
+      "read_at": null
+    }
+  ],
+  "next_cursor": null
+}

@@ -5,10 +5,16 @@ import type {
   ClockState,
   DemoAccount,
   ListResult,
+  Notification,
+  NotificationDispatchResult,
+  NotificationJob,
+  NotificationTemplate,
   Reservation,
   ReservationRevision,
   Role,
   SessionContext,
+  StaffAccount,
+  StaffAccountSecret,
 } from './types'
 
 const BASE = '/api/v1'
@@ -119,8 +125,48 @@ export const api = {
     }),
   reservationRevisions: (id: string) =>
     request<ListResult<ReservationRevision>>(`/reservations/${id}/revisions`),
+  staffAccounts: () => request<ListResult<StaffAccount>>('/staff-accounts'),
+  createStaffAccount: (body: {
+    login_name: string
+    display_name: string
+    building_ids: string[]
+  }) =>
+    request<StaffAccountSecret>('/staff-accounts', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateStaffAccount: (
+    id: string,
+    body: { display_name?: string; building_ids?: string[] },
+  ) =>
+    request<StaffAccount>(`/staff-accounts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  resetStaffPassword: (id: string) =>
+    request<StaffAccountSecret>(`/staff-accounts/${id}/reset-password`, { method: 'POST' }),
+  disableStaffAccount: (id: string) =>
+    request<StaffAccount>(`/staff-accounts/${id}/disable`, { method: 'POST' }),
   buildingTonight: (buildingId: string) =>
     request<ListResult<Record<string, unknown>>>(`/buildings/${buildingId}/tonight`),
+  inbox: (unreadOnly = false) =>
+    request<ListResult<Notification>>(
+      `/notifications${unreadOnly ? '?unread_only=true' : ''}`,
+    ),
+  markNotificationRead: (id: string) =>
+    request<Notification>(`/notifications/${id}/read`, { method: 'POST' }),
+  dispatchNotifications: (body: {
+    template: NotificationTemplate
+    recipient_user_ids: string[]
+    service_date?: string
+    student_ids?: string[]
+    deliver_now?: boolean
+  }) =>
+    request<NotificationDispatchResult>('/notification-dispatch', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  notificationJobs: () => request<ListResult<NotificationJob>>('/notification-jobs'),
   dutyAssignments: () => request<ListResult<Record<string, unknown>>>('/duty-assignments'),
   returnRecords: () => request<ListResult<Record<string, unknown>>>('/return-records'),
   riskEvents: () => request<ListResult<Record<string, unknown>>>('/risk-events'),

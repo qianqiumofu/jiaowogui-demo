@@ -1,19 +1,19 @@
 """预约 HTTP 入口（A 主责）。鉴权用 require(action)，数据范围交给 service 判定。"""
 
-from datetime import date, datetime
+from datetime import date
 from typing import Annotated
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.clock import business_iso
 from app.core.db import get_session
 from app.core.errors import ApiError
 from app.modules.authorization.dependencies import require
 from app.modules.identity.schemas import Role, SessionContext
 from app.modules.reservation import service
 from app.modules.reservation.schemas import ReservationCreate, ReservationPatch, VersionedAction
+from app.modules.risk import service as risk_service
 
 router = APIRouter(prefix="/reservations", tags=["reservation"])
 
@@ -25,23 +25,17 @@ ReadDep = Annotated[SessionContext, Depends(require("reservation:read"))]
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-def _moment(value: datetime) -> str:
-    """同一条时刻在各接口上必须显示成同一个偏移：数据库回读是 UTC，入参带业务时区。"""
-    tz = ZoneInfo(get_settings().business_timezone)
-    return (value if value.tzinfo else value.replace(tzinfo=tz)).astimezone(tz).isoformat()
-
-
 def _reservation(res) -> dict:
     return {
         "id": res.id,
         "student_id": res.student_id,
         "service_date": res.service_date.isoformat(),
         "status": res.status,
-        "planned_return_at": _moment(res.planned_return_at),
+        "planned_return_at": business_iso(res.planned_return_at),
         "reason": res.reason,
         "version": res.version,
-        "created_at": _moment(res.created_at),
-        "updated_at": _moment(res.updated_at),
+        "created_at": business_iso(res.created_at),
+        "updated_at": business_iso(res.updated_at),
     }
 
 
@@ -52,10 +46,10 @@ def _revision(rev) -> dict:
         "version": rev.version,
         "source": rev.source,
         "status": rev.status,
-        "planned_return_at": _moment(rev.planned_return_at),
+        "planned_return_at": business_iso(rev.planned_return_at),
         "reason": rev.reason,
         "changed_by": rev.changed_by,
-        "changed_at": _moment(rev.changed_at),
+        "changed_at": business_iso(rev.changed_at),
     }
 
 
@@ -104,7 +98,14 @@ def create_reservation(request: Request, guarded: CreateDep, db: SessionDep, pay
         planned_return_at=payload.planned_return_at,
         reason=payload.reason,
     )
-    return _reservation(res)
+    body = _reservation(res)
+    # 弹窗事实是纯派生读取，不参与预约是否通过（R06），也不落任何通知任务（R15）。
+    notice = risk_service.notice_for_create(
+        db, request.app.state.clock, student_id=res.student_id, service_date=res.service_date
+    )
+    if notice is not None:
+        body["risk_notice"] = notice
+    return body
 
 
 @router.patch("/{reservation_id}")

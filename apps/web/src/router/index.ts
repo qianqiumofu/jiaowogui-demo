@@ -67,6 +67,28 @@ const routes: RouteRecordRaw[] = [
         meta: { roles: ['CAMPUS'], label: '全校查询' },
       },
       {
+        path: 'campus/staff-accounts',
+        name: 'campus-staff-accounts',
+        component: () => import('@/features/campus/views/StaffAccountsView.vue'),
+        meta: { roles: ['CAMPUS'], label: '宿管账号', action: 'staff_account:read' },
+      },
+      {
+        path: 'campus/notifications',
+        name: 'campus-notifications',
+        component: () => import('@/features/campus/views/NotificationDemoView.vue'),
+        meta: { roles: ['CAMPUS'], label: '演示投递', action: 'notification:dispatch' },
+      },
+      {
+        path: 'shared/inbox',
+        name: 'shared-inbox',
+        component: () => import('@/features/shared/views/InboxView.vue'),
+        meta: {
+          roles: ['COUNSELOR', 'DORM_MANAGER', 'CAMPUS'],
+          label: '模拟收件箱',
+          action: 'notification:read',
+        },
+      },
+      {
         path: 'shared/risk',
         name: 'shared-risk',
         component: () => import('@/features/shared/views/RiskView.vue'),

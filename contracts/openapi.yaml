@@ -26,7 +26,11 @@ paths:
 
   /auth/mock-login:
     post:
-      summary: 模拟学校统一身份登录
+      summary: 模拟学校统一身份登录或工号账号登录
+      description: >-
+        同一入口按登录名分派：校内统一账户走模拟统一身份（R18），
+        园区分发的宿管工号账号走本地工号表校验口令（R19）。
+        账号被停用时返回 ACCOUNT_DISABLED。
       requestBody:
         required: true
         content:
@@ -46,6 +50,12 @@ paths:
                 $ref: "#/components/schemas/AuthSession"
         "401":
           description: 口令错误或账号不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: 账号已被园区停用
           content:
             application/json:
               schema:
@@ -153,6 +163,151 @@ paths:
               schema:
                 $ref: "#/components/schemas/RoleList"
 
+  /staff-accounts:
+    get:
+      summary: 列出园区分发的宿管工号账号
+      description: >-
+        仅园区角色（staff_account:read）。这些账号属雇佣人员，不在学校统一身份目录内（R19）。
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 工号账号列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAccountList"
+        "403":
+          description: 非园区角色一律拒绝
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: 注册宿管工号账号并绑定固定管理楼栋
+      description: >-
+        仅园区角色（staff_account:create）。角色固定为 DORM_MANAGER，楼栋范围即后续该账号的数据范围。
+        初始口令由服务端生成，只在本响应里返回一次（Demo 默认，见基线「报告、风险和权限默认」）。
+        楼栋是否存在由 B 的目录接口校验，目录落地前只校验非空与去重。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffAccountCreateRequest"
+      responses:
+        "201":
+          description: 已创建，含一次性初始口令
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAccountSecret"
+        "403":
+          description: 非园区角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: 登录名已被占用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: 楼栋列表为空或字段格式不合法
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /staff-accounts/{staff_account_id}:
+    patch:
+      summary: 改绑管理楼栋或显示名
+      description: 仅园区角色（staff_account:update）。改绑只影响后续会话范围解析，不写历史记录。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/StaffAccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffAccountUpdateRequest"
+      responses:
+        "200":
+          description: 更新后的账号
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAccount"
+        "403":
+          description: 非园区角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 账号不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /staff-accounts/{staff_account_id}/reset-password:
+    post:
+      summary: 重置工号账号口令
+      description: 仅园区角色（staff_account:reset）。新口令只在本响应返回一次，旧会话立即失效。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/StaffAccountId"
+      responses:
+        "200":
+          description: 含新口令
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAccountSecret"
+        "403":
+          description: 非园区角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 账号不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /staff-accounts/{staff_account_id}/disable:
+    post:
+      summary: 停用宿管工号账号
+      description: 仅园区角色（staff_account:disable）。停用后登录被拒，已签发会话在下次请求时失效。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/StaffAccountId"
+      responses:
+        "200":
+          description: 已停用的账号
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAccount"
+        "403":
+          description: 非园区角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 账号不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /reservations:
     get:
       summary: 按授权范围列出预约
@@ -184,6 +339,8 @@ paths:
         全部自动通过（R06）。当夜已存在 ACTIVE/FULFILLED 预约返回
         RESERVATION_EXISTS；存在 CANCELLED 预约返回 RESERVATION_CANCELLED，
         须走恢复接口复用同一 ID。
+        本预约若首次跨过演示配置的规则阈值，响应额外带 risk_notice（R16 的申请时弹窗）；
+        弹窗只是提示，不改变自动通过的结果，也不产生任何通知任务（R15）。
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -197,7 +354,7 @@ paths:
                 reason: { type: string, maxLength: 500 }
       responses:
         "201":
-          description: 已创建并自动通过
+          description: 已创建并自动通过；首次跨阈值时带申请弹窗事实
           content:
             application/json:
               schema:
@@ -449,6 +606,136 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /notifications:
+    get:
+      summary: 我的模拟收件箱
+      description: >-
+        只返回当前会话本人作为收件人的条目（notification:read）。邮件类条目是已渲染正文的预览，
+        Demo 不真实发信；站内待办条目对应宿管工号账号。渠道由账号来源决定，客户端无法指定。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: unread_only
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: 收件箱列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationList"
+        "401":
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notifications/{notification_id}:
+    get:
+      summary: 读取一条通知的正文
+      description: 非本人收件条目按不存在处理（404），不泄露存在性。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "200":
+          description: 通知
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: 不存在或不属于当前收件人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notifications/{notification_id}/read:
+    post:
+      summary: 标记已读
+      description: 幂等（notification:mark_read）；重复标记返回同一条目，read_at 取首次时间。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "200":
+          description: 更新后的通知
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: 不存在或不属于当前收件人
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notification-dispatch:
+    post:
+      summary: 演示投递：按模板渲染并入队通知任务
+      description: >-
+        仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与
+        值班关系派生（23:30 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警 → 辅导员 + 当班宿管），
+        在 B 的目录与 duty 落地前不开放自选收件人。
+        服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、
+        同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationDispatchRequest"
+      responses:
+        "202":
+          description: 已入队的任务（去重时返回既有任务）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationDispatchResult"
+        "403":
+          description: 非园区角色，或收件人含园区的风险预警
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 收件人不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: 收件人为空或模板与收件人角色不匹配
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notification-jobs:
+    get:
+      summary: 列出通知后台任务
+      description: >-
+        仅园区角色（notification_job:read）。用于演示时确认 worker 已消费 `background_jobs`；
+        只覆盖通知类任务，不暴露其他模块的任务负载。
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationJobList"
+        "403":
+          description: 非园区角色
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /demo/clock:
     get:
       summary: 读取演示时钟
@@ -491,21 +778,51 @@ components:
       required: true
       schema: { type: string }
 
+    StaffAccountId:
+      name: staff_account_id
+      in: path
+      required: true
+      schema: { type: string }
+
+    NotificationId:
+      name: notification_id
+      in: path
+      required: true
+      schema: { type: string }
+
   schemas:
     Role:
       type: string
       enum: [STUDENT, DORM_MANAGER, COUNSELOR, CAMPUS]
 
+    AccountSource:
+      type: string
+      description: >-
+        账号来源。UNIFIED_SCHOOL 走学校统一身份并带校内邮箱；
+        STAFF_LOCAL 是园区为本系统注册的雇佣人员工号账号，无邮箱，通知只走站内待办。
+      enum: [UNIFIED_SCHOOL, STAFF_LOCAL]
+
+    StaffAccountStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
+
     DemoAccount:
       type: object
-      required: [login_name, display_name, roles, password]
+      required: [user_id, login_name, display_name, roles, password, account_source]
       properties:
+        user_id:
+          type: string
+          description: 合成账号的稳定 ID；园区端用它指定演示投递的收件人。
         login_name: { type: string }
         display_name: { type: string }
         roles:
           type: array
           items: { $ref: "#/components/schemas/Role" }
         password: { type: string, description: 仅 Demo 合成口令 }
+        account_source: { $ref: "#/components/schemas/AccountSource" }
+        email:
+          type: ["string", "null"]
+          description: 合成校内邮箱；工号账号为 null。
 
     Scope:
       type: object
@@ -529,11 +846,23 @@ components:
     SessionContext:
       type: object
       required:
-        [session_id, user_id, school_id, display_name, roles, active_role, scope, expires_at]
+        [
+          session_id,
+          user_id,
+          school_id,
+          display_name,
+          roles,
+          active_role,
+          scope,
+          expires_at,
+          account_source,
+        ]
       properties:
         session_id: { type: string }
         user_id: { type: string }
-        school_id: { type: string }
+        school_id:
+          type: string
+          description: 校内统一账户为学号或工号；工号账号为本地工号，与校内编号无关。
         display_name: { type: string }
         roles:
           type: array
@@ -541,6 +870,65 @@ components:
         active_role: { $ref: "#/components/schemas/Role" }
         scope: { $ref: "#/components/schemas/Scope" }
         expires_at: { type: string, format: date-time }
+        account_source: { $ref: "#/components/schemas/AccountSource" }
+        email:
+          type: ["string", "null"]
+          description: 报告与预警邮件的投递地址；STAFF_LOCAL 为 null，只落站内待办。
+
+    StaffAccount:
+      type: object
+      required: [id, login_name, display_name, building_ids, status, created_at]
+      properties:
+        id: { type: string }
+        login_name: { type: string }
+        display_name: { type: string }
+        building_ids:
+          type: array
+          description: 园区绑定的固定管理楼栋；代班（B 的 duty）在此之上叠加。
+          items: { type: string }
+        status: { $ref: "#/components/schemas/StaffAccountStatus" }
+        created_at: { type: string, format: date-time }
+        disabled_at: { type: ["string", "null"], format: date-time }
+
+    StaffAccountCreateRequest:
+      type: object
+      required: [login_name, display_name, building_ids]
+      properties:
+        login_name:
+          type: string
+          minLength: 3
+          description: 不得与统一账户或已有工号账号重复。
+        display_name: { type: string, minLength: 1 }
+        building_ids:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+
+    StaffAccountUpdateRequest:
+      type: object
+      properties:
+        display_name: { type: string, minLength: 1 }
+        building_ids:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+
+    StaffAccountSecret:
+      type: object
+      description: 只在创建与重置响应中出现一次，不写日志、不进列表接口。
+      required: [account, initial_password]
+      properties:
+        account: { $ref: "#/components/schemas/StaffAccount" }
+        initial_password: { type: string }
+
+    StaffAccountList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/StaffAccount" }
+        next_cursor: { type: ["string", "null"] }
 
     AuthSession:
       type: object
@@ -630,6 +1018,12 @@ components:
         version: { type: integer }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        risk_notice:
+          allOf:
+            - $ref: "#/components/schemas/RiskNotice"
+          description: >-
+            仅 POST 响应在「本次预约首次跨过演示阈值」时返回；其余入口与未触发时缺省。
+            判定与文案全部在服务端，客户端只显示（基线「统一日期与边界」）。
 
     ReservationRevisionSource:
       type: string
@@ -669,6 +1063,185 @@ components:
           items: { $ref: "#/components/schemas/ReservationRevision" }
         next_cursor: { type: ["string", "null"] }
 
+    RiskNotice:
+      type: object
+      description: >-
+        申请时弹窗的规则事实（R16）。口径是「预约晚归的业务夜数与连续性」，
+        不是实际晚归——实际返宿以门禁通行记录为准，B 的记录模块落地前不改口径。
+        阈值全部来自演示配置，正式值待学校确认，正文不得写成处分或催办（R15、R17）。
+      required:
+        [rule_version, window_nights, nights, times, consecutive_nights, title, message]
+      properties:
+        rule_version:
+          type: string
+          description: 触发所用的规则集版本，配置 risk_rule_version；同一夜重复弹窗判定必须比对它。
+        window_nights: { type: integer, description: 统计窗口（业务夜数），配置 risk_window_nights }
+        nights:
+          type: array
+          items: { type: string, format: date }
+          description: 窗口内出现非取消预约的业务夜，升序，含当夜。
+        times: { type: integer, description: 窗口内的晚归夜数 }
+        consecutive_nights: { type: integer, description: 窗口内最长的连续晚归夜数 }
+        triggered_by:
+          type: string
+          enum: [TIMES, CONSECUTIVE]
+          description: 首先越过的阈值；两者同时越界时取 TIMES。
+        title: { type: string }
+        message:
+          type: string
+          description: 服务端渲染好的提示正文，客户端原样显示，不参与判定与拼接。
+
+    NotificationTemplate:
+      type: string
+      description: >-
+        NIGHT_ROSTER 每晚 23:30 宿管名单快照（R12）；DAILY_REPORT 次日辅导员日报、
+        WEEKLY_REPORT 周一辅导员周报（R13）；RISK_ALERT 多次或连续触发的跟进提示（R16），
+        收件人只能是负责辅导员与当班宿管。
+      enum: [NIGHT_ROSTER, DAILY_REPORT, WEEKLY_REPORT, RISK_ALERT]
+
+    NotificationChannel:
+      type: string
+      description: >-
+        投递渠道，服务端按收件人账号来源单选（R18、R19）：统一身份账户走 EMAIL，
+        宿管工号账号走 INBOX；同一事件对同一收件人不同时出现在两个渠道。
+      enum: [EMAIL, INBOX]
+
+    NotificationStatus:
+      type: string
+      enum: [SENT, READ]
+
+    BackgroundJobStatus:
+      type: string
+      description: PENDING 待领取；RUNNING 已被 worker 租约占用；DONE 已完成；FAILED 保留最后一次失败原因。
+      enum: [PENDING, RUNNING, DONE, FAILED]
+
+    Notification:
+      type: object
+      description: 模拟收件箱条目。Demo 的邮件不真实投递，正文在本对象里直接可见。
+      required:
+        - id
+        - template
+        - channel
+        - subject
+        - body
+        - status
+        - service_date
+        - recipient_email
+        - job_id
+        - created_at
+        - read_at
+      properties:
+        id: { type: string }
+        template: { $ref: "#/components/schemas/NotificationTemplate" }
+        channel: { $ref: "#/components/schemas/NotificationChannel" }
+        subject: { type: string }
+        body:
+          type: string
+          description: >-
+            纯文本正文。一律带「未确认返宿只代表查询派生状态」的口径说明，
+            不含任何超时催办或升级处置措辞（R15）。
+        status: { $ref: "#/components/schemas/NotificationStatus" }
+        service_date:
+          type: ["string", "null"]
+          format: date
+          description: 本条通知覆盖的最后一个业务夜；周报取区间末日。
+        recipient_email:
+          type: ["string", "null"]
+          description: 邮件预览的合成收件地址；站内待办为 null。
+        job_id: { type: ["string", "null"] }
+        created_at: { type: string, format: date-time }
+        read_at: { type: ["string", "null"], format: date-time }
+
+    NotificationList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        next_cursor: { type: ["string", "null"] }
+
+    NotificationJob:
+      type: object
+      description: "background_jobs 里的一条通知任务；worker 消费后生成收件箱条目。"
+      required:
+        - id
+        - job_type
+        - business_key
+        - status
+        - planned_at
+        - attempts
+        - template
+        - service_date
+        - recipient_user_ids
+      properties:
+        id: { type: string }
+        job_type:
+          type: string
+          description: 通知类任务固定为 NOTIFICATION_SEND；重试沿用同一行，attempts 递增。
+          enum: [NOTIFICATION_SEND]
+        business_key:
+          type: string
+          description: 幂等键 = 模板:业务夜:收件人集合；唯一约束保证重复提交只有一条任务。
+        status: { $ref: "#/components/schemas/BackgroundJobStatus" }
+        planned_at: { type: string, format: date-time }
+        attempts: { type: integer }
+        last_error: { type: ["string", "null"] }
+        done_at: { type: ["string", "null"], format: date-time }
+        template: { $ref: "#/components/schemas/NotificationTemplate" }
+        service_date: { type: string, format: date }
+        recipient_user_ids:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+
+    NotificationJobList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/NotificationJob" }
+        next_cursor: { type: ["string", "null"] }
+
+    NotificationDispatchRequest:
+      type: object
+      required: [template, recipient_user_ids]
+      properties:
+        template: { $ref: "#/components/schemas/NotificationTemplate" }
+        service_date:
+          type: string
+          format: date
+          description: 省略时取服务端当前业务夜（客户端不得自行判定跨日）。
+        recipient_user_ids:
+          type: array
+          minItems: 1
+          items: { type: string }
+        student_ids:
+          type: array
+          description: >-
+            仅用于收窄正文取数范围；省略即当前授权范围内的全部预约。
+            正式版的范围来自目录关系，不由调用方指定。
+          items: { type: string }
+        deliver_now:
+          type: boolean
+          default: false
+          description: >-
+            演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费；
+            false 时按配置的计划时刻排队（23:30 名单、次日 08:30 日报、周一 09:00 周报）。
+            worker 与 API 的演示时钟偏移不互通，跨进程共享偏移见 docs/13。
+
+    NotificationDispatchResult:
+      type: object
+      required: [jobs, deduped]
+      properties:
+        jobs:
+          type: array
+          items: { $ref: "#/components/schemas/NotificationJob" }
+        deduped:
+          type: boolean
+          description: true 表示幂等键已存在，本次没有重复入队。
+
     ItemList:
       type: object
       required: [items, next_cursor]
@@ -689,7 +1262,9 @@ components:
             SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED,
             DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR,
             VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED,
-            RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND。
+            RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND, ACCOUNT_DISABLED,
+            LOGIN_NAME_TAKEN, STAFF_ACCOUNT_NOT_FOUND, NOTIFICATION_NOT_FOUND,
+            NOTIFICATION_RECIPIENT_FORBIDDEN, NOTIFICATION_TEMPLATE_MISMATCH。
             新增错误码必须同时更新文档与前端处理。
         message: { type: string }
         request_id: { type: string }

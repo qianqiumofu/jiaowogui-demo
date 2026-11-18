@@ -87,5 +87,10 @@ def clean_db(postgres_schema: str) -> Iterator[None]:
     from app.core.db import get_engine
 
     with get_engine().begin() as conn:
-        conn.execute(text("TRUNCATE reservations, reservation_revisions RESTART IDENTITY"))
+        conn.execute(
+            text(
+                "TRUNCATE reservations, reservation_revisions, local_staff_accounts, "
+                "notifications, background_jobs RESTART IDENTITY"
+            )
+        )
     yield

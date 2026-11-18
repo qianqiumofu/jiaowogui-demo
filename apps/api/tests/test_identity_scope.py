@@ -15,6 +15,18 @@ def test_student_reads_own_scope_and_is_denied_building_list(client) -> None:
     assert denied.json()["code"] == "FORBIDDEN_ACTION"
 
 
+def test_seed_accounts_expose_account_source(client) -> None:
+    """统一账户带合成校内邮箱，宿管种子账号属园区分发的工号账号（R18、R19）。"""
+    student = client.get(f"{API}/me", headers=auth(token_for(client, "student"))).json()
+    assert student["account_source"] == "UNIFIED_SCHOOL"
+    assert student["email"] == "2023S0001@synth.edu.cn"
+
+    dorm = client.get(f"{API}/me", headers=auth(token_for(client, "dorm"))).json()
+    assert dorm["account_source"] == "STAFF_LOCAL"
+    assert dorm["email"] is None
+    assert dorm["scope"]["building_ids"] == ["bldg_a1"]
+
+
 def test_without_token_is_401(client) -> None:
     response = client.get(f"{API}/me")
     assert response.status_code == 401

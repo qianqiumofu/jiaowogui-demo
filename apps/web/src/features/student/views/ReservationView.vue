@@ -2,7 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { ApiRequestError, api } from '@/shared/api/client'
-import type { ClockState, ListResult, Reservation, ReservationRevision } from '@/shared/api/types'
+import type {
+  ClockState,
+  ListResult,
+  Reservation,
+  ReservationRevision,
+  RiskNotice,
+} from '@/shared/api/types'
 import StubPanel from '@/shared/components/StubPanel.vue'
 
 const clock = ref<ClockState | null>(null)
@@ -11,6 +17,8 @@ const loading = ref(true)
 const busy = ref(false)
 const notice = ref('')
 const blocked = ref('')
+// 弹窗事实全部来自创建响应，前端不判阈值、不拼正文（基线「统一日期与边界」）。
+const riskNotice = ref<RiskNotice | null>(null)
 
 const timeText = ref('')
 const reasonText = ref('')
@@ -127,11 +135,14 @@ async function run(action: () => Promise<Reservation>, done: string) {
   busy.value = true
   blocked.value = ''
   try {
-    reservation.value = await action()
+    const result = await action()
+    reservation.value = result
+    riskNotice.value = result.risk_notice ?? null
     mode.value = 'idle'
     notice.value = done
     if (historyOpen.value) history.value = await api.reservationRevisions(reservation.value.id)
   } catch (cause) {
+    riskNotice.value = null
     if (cause instanceof ApiRequestError && cause.code === 'VERSION_CONFLICT') {
       await refresh()
       notice.value = ''
@@ -305,6 +316,18 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <figure v-if="riskNotice" class="resv__risk">
+        <div class="resv__riskHead">
+          <figcaption class="resv__riskTitle">{{ riskNotice.title }}</figcaption>
+          <button class="resv__riskClose" type="button" @click="riskNotice = null">知道了</button>
+        </div>
+        <p class="resv__riskText">{{ riskNotice.message }}</p>
+        <p class="resv__riskMeta">
+          规则 {{ riskNotice.rule_version }} · 近 {{ riskNotice.window_nights }} 个业务夜第
+          {{ riskNotice.times }} 次 · 连续 {{ riskNotice.consecutive_nights }} 夜
+        </p>
+      </figure>
 
       <p v-if="notice" class="resv__notice">{{ notice }}</p>
       <p v-if="blocked" class="resv__notice resv__notice--bad">{{ blocked }}</p>

@@ -10,6 +10,8 @@
       "STUDENT"
     ],
     "active_role": "COUNSELOR",
+    "account_source": "UNIFIED_SCHOOL",
+    "email": "T2001@synth.edu.cn",
     "scope": {
       "counselor_user_id": "usr_synth_0002",
       "student_ids": [

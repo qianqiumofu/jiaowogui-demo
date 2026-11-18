@@ -1,0 +1,11 @@
+{
+  "code": "NOTIFICATION_TEMPLATE_MISMATCH",
+  "message": "23:30 名单快照只投递宿管，辅导员不是该模板的收件角色。",
+  "request_id": "req_synth_0005",
+  "details": {
+    "template": "NIGHT_ROSTER",
+    "recipient_user_id": "usr_synth_0002",
+    "role": "COUNSELOR",
+    "allowed_roles": ["DORM_MANAGER"]
+  }
+}

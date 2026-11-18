@@ -18,7 +18,13 @@ def get_engine() -> Engine:
     if not settings.database_url:
         raise database_unavailable()
     if _engine is None:
-        _engine = create_engine(settings.database_url, pool_pre_ping=True, future=True)
+        # 数据库宕机时 libpq 默认无限等待，探活与请求会挂死；限定 5 秒快速失败。
+        _engine = create_engine(
+            settings.database_url,
+            pool_pre_ping=True,
+            future=True,
+            connect_args={"connect_timeout": 5},
+        )
         _session_factory = sessionmaker(_engine, expire_on_commit=False)
     return _engine
 
@@ -35,19 +41,16 @@ def db_status() -> str:
 
 
 def get_session() -> Iterator[Session]:
-    global _session_factory
     engine = get_engine()
     assert _session_factory is not None
-    try:
-        with engine.connect():
-            pass
-    except SQLAlchemyError as exc:
-        raise ApiError(
-            503,
-            "DATABASE_UNREACHABLE",
-            "数据库连接失败，请确认 docker compose 已启动。",
-            {"error": str(exc)},
-        ) from exc
-    assert _session_factory is not None
     with _session_factory() as session:
+        try:
+            session.execute(text("SELECT 1"))
+        except SQLAlchemyError as exc:
+            raise ApiError(
+                503,
+                "DATABASE_UNREACHABLE",
+                "数据库连接失败，请确认 docker compose 已启动。",
+                {"error": str(exc)},
+            ) from exc
         yield session

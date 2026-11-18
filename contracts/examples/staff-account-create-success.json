@@ -1,0 +1,14 @@
+{
+  "account": {
+    "id": "usr_staff_a2_01",
+    "login_name": "dorm_a2",
+    "display_name": "刘阿姨（bldg_a2）",
+    "building_ids": [
+      "bldg_a2"
+    ],
+    "status": "ACTIVE",
+    "created_at": "2026-11-17T10:12:00+08:00",
+    "disabled_at": null
+  },
+  "initial_password": "synth7Kq2Lx9"
+}

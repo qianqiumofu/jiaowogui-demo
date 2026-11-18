@@ -1,0 +1,19 @@
+{
+  "jobs": [
+    {
+      "id": "job_synth_0001",
+      "job_type": "NOTIFICATION_SEND",
+      "business_key": "NOTIFICATION_SEND:NIGHT_ROSTER:2026-11-16:usr_synth_0003",
+      "status": "PENDING",
+      "planned_at": "2026-11-16T23:30:00+08:00",
+      "attempts": 0,
+      "last_error": null,
+      "done_at": null,
+      "template": "NIGHT_ROSTER",
+      "service_date": "2026-11-16",
+      "recipient_user_ids": ["usr_synth_0003"],
+      "created_at": "2026-11-16T22:58:10+08:00"
+    }
+  ],
+  "deduped": false
+}

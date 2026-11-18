@@ -49,7 +49,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 模拟学校统一身份登录 */
+        /**
+         * 模拟学校统一身份登录或工号账号登录
+         * @description 同一入口按登录名分派：校内统一账户走模拟统一身份（R18）， 园区分发的宿管工号账号走本地工号表校验口令（R19）。 账号被停用时返回 ACCOUNT_DISABLED。
+         */
         post: {
             parameters: {
                 query?: never;
@@ -77,6 +80,15 @@ export interface paths {
                 };
                 /** @description 口令错误或账号不存在 */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 账号已被园区停用 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -343,6 +355,289 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/staff-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 列出园区分发的宿管工号账号
+         * @description 仅园区角色（staff_account:read）。这些账号属雇佣人员，不在学校统一身份目录内（R19）。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 工号账号列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffAccountList"];
+                    };
+                };
+                /** @description 非园区角色一律拒绝 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 注册宿管工号账号并绑定固定管理楼栋
+         * @description 仅园区角色（staff_account:create）。角色固定为 DORM_MANAGER，楼栋范围即后续该账号的数据范围。 初始口令由服务端生成，只在本响应里返回一次（Demo 默认，见基线「报告、风险和权限默认」）。 楼栋是否存在由 B 的目录接口校验，目录落地前只校验非空与去重。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StaffAccountCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description 已创建，含一次性初始口令 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffAccountSecret"];
+                    };
+                };
+                /** @description 非园区角色 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 登录名已被占用 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 楼栋列表为空或字段格式不合法 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/staff-accounts/{staff_account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 改绑管理楼栋或显示名
+         * @description 仅园区角色（staff_account:update）。改绑只影响后续会话范围解析，不写历史记录。
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    staff_account_id: components["parameters"]["StaffAccountId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StaffAccountUpdateRequest"];
+                };
+            };
+            responses: {
+                /** @description 更新后的账号 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffAccount"];
+                    };
+                };
+                /** @description 非园区角色 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 账号不存在 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/staff-accounts/{staff_account_id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 重置工号账号口令
+         * @description 仅园区角色（staff_account:reset）。新口令只在本响应返回一次，旧会话立即失效。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    staff_account_id: components["parameters"]["StaffAccountId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 含新口令 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffAccountSecret"];
+                    };
+                };
+                /** @description 非园区角色 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 账号不存在 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/staff-accounts/{staff_account_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 停用宿管工号账号
+         * @description 仅园区角色（staff_account:disable）。停用后登录被拒，已签发会话在下次请求时失效。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    staff_account_id: components["parameters"]["StaffAccountId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 已停用的账号 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffAccount"];
+                    };
+                };
+                /** @description 非园区角色 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 账号不存在 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reservations": {
         parameters: {
             query?: never;
@@ -388,7 +683,7 @@ export interface paths {
         put?: never;
         /**
          * 创建当日晚归预约
-         * @description service_date 由服务端时钟判定为当夜，客户端不可指定其他夜晚（R05）。 全部自动通过（R06）。当夜已存在 ACTIVE/FULFILLED 预约返回 RESERVATION_EXISTS；存在 CANCELLED 预约返回 RESERVATION_CANCELLED， 须走恢复接口复用同一 ID。
+         * @description service_date 由服务端时钟判定为当夜，客户端不可指定其他夜晚（R05）。 全部自动通过（R06）。当夜已存在 ACTIVE/FULFILLED 预约返回 RESERVATION_EXISTS；存在 CANCELLED 预约返回 RESERVATION_CANCELLED， 须走恢复接口复用同一 ID。 本预约若首次跨过演示配置的规则阈值，响应额外带 risk_notice（R16 的申请时弹窗）； 弹窗只是提示，不改变自动通过的结果，也不产生任何通知任务（R15）。
          */
         post: {
             parameters: {
@@ -407,7 +702,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description 已创建并自动通过 */
+                /** @description 已创建并自动通过；首次跨阈值时带申请弹窗事实 */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -959,6 +1254,274 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我的模拟收件箱
+         * @description 只返回当前会话本人作为收件人的条目（notification:read）。邮件类条目是已渲染正文的预览， Demo 不真实发信；站内待办条目对应宿管工号账号。渠道由账号来源决定，客户端无法指定。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    unread_only?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 收件箱列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationList"];
+                    };
+                };
+                /** @description 未认证 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{notification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取一条通知的正文
+         * @description 非本人收件条目按不存在处理（404），不泄露存在性。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notification_id: components["parameters"]["NotificationId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 通知 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notification"];
+                    };
+                };
+                /** @description 不存在或不属于当前收件人 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 标记已读
+         * @description 幂等（notification:mark_read）；重复标记返回同一条目，read_at 取首次时间。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    notification_id: components["parameters"]["NotificationId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 更新后的通知 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Notification"];
+                    };
+                };
+                /** @description 不存在或不属于当前收件人 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification-dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 演示投递：按模板渲染并入队通知任务
+         * @description 仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与 值班关系派生（23:30 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警 → 辅导员 + 当班宿管）， 在 B 的目录与 duty 落地前不开放自选收件人。 服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、 同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationDispatchRequest"];
+                };
+            };
+            responses: {
+                /** @description 已入队的任务（去重时返回既有任务） */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationDispatchResult"];
+                    };
+                };
+                /** @description 非园区角色，或收件人含园区的风险预警 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 收件人不存在 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 收件人为空或模板与收件人角色不匹配 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notification-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 列出通知后台任务
+         * @description 仅园区角色（notification_job:read）。用于演示时确认 worker 已消费 `background_jobs`； 只覆盖通知类任务，不暴露其他模块的任务负载。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 任务列表 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationJobList"];
+                    };
+                };
+                /** @description 非园区角色 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/demo/clock": {
         parameters: {
             query?: never;
@@ -1027,12 +1590,24 @@ export interface components {
     schemas: {
         /** @enum {string} */
         Role: "STUDENT" | "DORM_MANAGER" | "COUNSELOR" | "CAMPUS";
+        /**
+         * @description 账号来源。UNIFIED_SCHOOL 走学校统一身份并带校内邮箱； STAFF_LOCAL 是园区为本系统注册的雇佣人员工号账号，无邮箱，通知只走站内待办。
+         * @enum {string}
+         */
+        AccountSource: "UNIFIED_SCHOOL" | "STAFF_LOCAL";
+        /** @enum {string} */
+        StaffAccountStatus: "ACTIVE" | "DISABLED";
         DemoAccount: {
+            /** @description 合成账号的稳定 ID；园区端用它指定演示投递的收件人。 */
+            user_id: string;
             login_name: string;
             display_name: string;
             roles: components["schemas"]["Role"][];
             /** @description 仅 Demo 合成口令 */
             password: string;
+            account_source: components["schemas"]["AccountSource"];
+            /** @description 合成校内邮箱；工号账号为 null。 */
+            email?: string | null;
         };
         /** @description 数据范围，按角色出现不同字段；resolved_by 标明由哪个适配器解析， pending: 前缀表示等待 B 目录模块覆盖。 */
         Scope: {
@@ -1049,6 +1624,7 @@ export interface components {
         SessionContext: {
             session_id: string;
             user_id: string;
+            /** @description 校内统一账户为学号或工号；工号账号为本地工号，与校内编号无关。 */
             school_id: string;
             display_name: string;
             roles: components["schemas"]["Role"][];
@@ -1056,6 +1632,40 @@ export interface components {
             scope: components["schemas"]["Scope"];
             /** Format: date-time */
             expires_at: string;
+            account_source: components["schemas"]["AccountSource"];
+            /** @description 报告与预警邮件的投递地址；STAFF_LOCAL 为 null，只落站内待办。 */
+            email?: string | null;
+        };
+        StaffAccount: {
+            id: string;
+            login_name: string;
+            display_name: string;
+            /** @description 园区绑定的固定管理楼栋；代班（B 的 duty）在此之上叠加。 */
+            building_ids: string[];
+            status: components["schemas"]["StaffAccountStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            disabled_at?: string | null;
+        };
+        StaffAccountCreateRequest: {
+            /** @description 不得与统一账户或已有工号账号重复。 */
+            login_name: string;
+            display_name: string;
+            building_ids: string[];
+        };
+        StaffAccountUpdateRequest: {
+            display_name?: string;
+            building_ids?: string[];
+        };
+        /** @description 只在创建与重置响应中出现一次，不写日志、不进列表接口。 */
+        StaffAccountSecret: {
+            account: components["schemas"]["StaffAccount"];
+            initial_password: string;
+        };
+        StaffAccountList: {
+            items: components["schemas"]["StaffAccount"][];
+            next_cursor: string | null;
         };
         AuthSession: {
             token: string;
@@ -1115,6 +1725,8 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            /** @description 仅 POST 响应在「本次预约首次跨过演示阈值」时返回；其余入口与未触发时缺省。 判定与文案全部在服务端，客户端只显示（基线「统一日期与边界」）。 */
+            risk_notice?: components["schemas"]["RiskNotice"];
         };
         /** @enum {string} */
         ReservationRevisionSource: "CREATE" | "RESCHEDULE" | "CANCEL" | "RESTORE" | "CLOSE";
@@ -1141,6 +1753,119 @@ export interface components {
             items: components["schemas"]["ReservationRevision"][];
             next_cursor: string | null;
         };
+        /** @description 申请时弹窗的规则事实（R16）。口径是「预约晚归的业务夜数与连续性」， 不是实际晚归——实际返宿以门禁通行记录为准，B 的记录模块落地前不改口径。 阈值全部来自演示配置，正式值待学校确认，正文不得写成处分或催办（R15、R17）。 */
+        RiskNotice: {
+            /** @description 触发所用的规则集版本，配置 risk_rule_version；同一夜重复弹窗判定必须比对它。 */
+            rule_version: string;
+            /** @description 统计窗口（业务夜数），配置 risk_window_nights */
+            window_nights: number;
+            /** @description 窗口内出现非取消预约的业务夜，升序，含当夜。 */
+            nights: string[];
+            /** @description 窗口内的晚归夜数 */
+            times: number;
+            /** @description 窗口内最长的连续晚归夜数 */
+            consecutive_nights: number;
+            /**
+             * @description 首先越过的阈值；两者同时越界时取 TIMES。
+             * @enum {string}
+             */
+            triggered_by?: "TIMES" | "CONSECUTIVE";
+            title: string;
+            /** @description 服务端渲染好的提示正文，客户端原样显示，不参与判定与拼接。 */
+            message: string;
+        };
+        /**
+         * @description NIGHT_ROSTER 每晚 23:30 宿管名单快照（R12）；DAILY_REPORT 次日辅导员日报、 WEEKLY_REPORT 周一辅导员周报（R13）；RISK_ALERT 多次或连续触发的跟进提示（R16）， 收件人只能是负责辅导员与当班宿管。
+         * @enum {string}
+         */
+        NotificationTemplate: "NIGHT_ROSTER" | "DAILY_REPORT" | "WEEKLY_REPORT" | "RISK_ALERT";
+        /**
+         * @description 投递渠道，服务端按收件人账号来源单选（R18、R19）：统一身份账户走 EMAIL， 宿管工号账号走 INBOX；同一事件对同一收件人不同时出现在两个渠道。
+         * @enum {string}
+         */
+        NotificationChannel: "EMAIL" | "INBOX";
+        /** @enum {string} */
+        NotificationStatus: "SENT" | "READ";
+        /**
+         * @description PENDING 待领取；RUNNING 已被 worker 租约占用；DONE 已完成；FAILED 保留最后一次失败原因。
+         * @enum {string}
+         */
+        BackgroundJobStatus: "PENDING" | "RUNNING" | "DONE" | "FAILED";
+        /** @description 模拟收件箱条目。Demo 的邮件不真实投递，正文在本对象里直接可见。 */
+        Notification: {
+            id: string;
+            template: components["schemas"]["NotificationTemplate"];
+            channel: components["schemas"]["NotificationChannel"];
+            subject: string;
+            /** @description 纯文本正文。一律带「未确认返宿只代表查询派生状态」的口径说明， 不含任何超时催办或升级处置措辞（R15）。 */
+            body: string;
+            status: components["schemas"]["NotificationStatus"];
+            /**
+             * Format: date
+             * @description 本条通知覆盖的最后一个业务夜；周报取区间末日。
+             */
+            service_date: string | null;
+            /** @description 邮件预览的合成收件地址；站内待办为 null。 */
+            recipient_email: string | null;
+            job_id: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            read_at: string | null;
+        };
+        NotificationList: {
+            items: components["schemas"]["Notification"][];
+            next_cursor: string | null;
+        };
+        /** @description background_jobs 里的一条通知任务；worker 消费后生成收件箱条目。 */
+        NotificationJob: {
+            id: string;
+            /**
+             * @description 通知类任务固定为 NOTIFICATION_SEND；重试沿用同一行，attempts 递增。
+             * @enum {string}
+             */
+            job_type: "NOTIFICATION_SEND";
+            /** @description 幂等键 = 模板:业务夜:收件人集合；唯一约束保证重复提交只有一条任务。 */
+            business_key: string;
+            status: components["schemas"]["BackgroundJobStatus"];
+            /** Format: date-time */
+            planned_at: string;
+            attempts: number;
+            last_error?: string | null;
+            /** Format: date-time */
+            done_at?: string | null;
+            template: components["schemas"]["NotificationTemplate"];
+            /** Format: date */
+            service_date: string;
+            recipient_user_ids: string[];
+            /** Format: date-time */
+            created_at?: string;
+        };
+        NotificationJobList: {
+            items: components["schemas"]["NotificationJob"][];
+            next_cursor: string | null;
+        };
+        NotificationDispatchRequest: {
+            template: components["schemas"]["NotificationTemplate"];
+            /**
+             * Format: date
+             * @description 省略时取服务端当前业务夜（客户端不得自行判定跨日）。
+             */
+            service_date?: string;
+            recipient_user_ids: string[];
+            /** @description 仅用于收窄正文取数范围；省略即当前授权范围内的全部预约。 正式版的范围来自目录关系，不由调用方指定。 */
+            student_ids?: string[];
+            /**
+             * @description 演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费； false 时按配置的计划时刻排队（23:30 名单、次日 08:30 日报、周一 09:00 周报）。 worker 与 API 的演示时钟偏移不互通，跨进程共享偏移见 docs/13。
+             * @default false
+             */
+            deliver_now: boolean;
+        };
+        NotificationDispatchResult: {
+            jobs: components["schemas"]["NotificationJob"][];
+            /** @description true 表示幂等键已存在，本次没有重复入队。 */
+            deduped: boolean;
+        };
         ItemList: {
             items: {
                 [key: string]: unknown;
@@ -1148,7 +1873,7 @@ export interface components {
             next_cursor: string | null;
         };
         Error: {
-            /** @description 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR, VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED, RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND。 新增错误码必须同时更新文档与前端处理。 */
+            /** @description 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR, VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED, RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND, ACCOUNT_DISABLED, LOGIN_NAME_TAKEN, STAFF_ACCOUNT_NOT_FOUND, NOTIFICATION_NOT_FOUND, NOTIFICATION_RECIPIENT_FORBIDDEN, NOTIFICATION_TEMPLATE_MISMATCH。 新增错误码必须同时更新文档与前端处理。 */
             code: string;
             message: string;
             request_id: string;
@@ -1160,6 +1885,8 @@ export interface components {
     responses: never;
     parameters: {
         ReservationId: string;
+        StaffAccountId: string;
+        NotificationId: string;
     };
     requestBodies: never;
     headers: never;

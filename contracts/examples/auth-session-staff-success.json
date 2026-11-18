@@ -1,0 +1,22 @@
+{
+  "token": "synth-token-staff-account",
+  "session": {
+    "session_id": "sess_synth_0007",
+    "user_id": "usr_staff_a2_01",
+    "school_id": "LOCAL-A2-01",
+    "display_name": "刘阿姨（bldg_a2）",
+    "roles": [
+      "DORM_MANAGER"
+    ],
+    "active_role": "DORM_MANAGER",
+    "account_source": "STAFF_LOCAL",
+    "email": null,
+    "scope": {
+      "building_ids": [
+        "bldg_a2"
+      ],
+      "resolved_by": "pending:duty_assignments"
+    },
+    "expires_at": "2026-11-16T09:30:00+08:00"
+  }
+}

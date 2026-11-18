@@ -37,3 +37,7 @@ desktop.ini
 exports/
 *.sqlite3
 *.dump
+
+# 演示时钟的进程间偏移状态（API 与 worker 共读，属本地运行态）
+.demo_clock.json
+.demo_clock.json.*.tmp

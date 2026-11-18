@@ -1057,6 +1057,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 辅导员日报事实（按需读取）
+         * @description 只返回当前账号负责关系内、指定业务夜的预约事实与按 `reports.summary` 口径算出的计数 （report:read）。缺省看服务端当前时刻的前一晚；传入晚于当前业务日的日期返回 422。 与 08:30 投递的日报邮件同取数、同口径，两处数字不可能不一致。未确认返宿只是没有匹配到 通行记录，接口不据此生成任何提醒（R15）。负责关系尚未同步时返回 403 `SCOPE_UNRESOLVED`。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 业务日 YYYY-MM-DD（D 日 06:00 到 D+1 日 06:00 算同一夜）。缺省为服务端当前时刻的前一晚； 晚于服务端判定的当前业务日返回 422，客户端不得自行推算业务日归属。 */
+                    service_date?: components["parameters"]["ServiceDate"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 当夜报告 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DailyReport"];
+                    };
+                };
+                /** @description 无权或负责关系缺失 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 业务日期不可查看 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/weekly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 辅导员周报事实（按需读取）
+         * @description 以指定业务夜为末夜，向前覆盖 `weekly_report_nights` 个业务夜（含空夜，逐夜一行）。 计数与投递出去的周报正文同口径；一周内一个预约都没有也返回全零行，不返回空对象。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 业务日 YYYY-MM-DD（D 日 06:00 到 D+1 日 06:00 算同一夜）。缺省为服务端当前时刻的前一晚； 晚于服务端判定的当前业务日返回 422，客户端不得自行推算业务日归属。 */
+                    service_date?: components["parameters"]["ServiceDate"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 区间报告 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WeeklyReport"];
+                    };
+                };
+                /** @description 无权或负责关系缺失 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 业务日期不可查看 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 报告订阅关系（占位）
+         * @description 订阅要落表，迁移号排在 B 的头之后，正式版接通前保持 501。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 能力未实现 */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buildings/{building_id}/tonight": {
         parameters: {
             query?: never;
@@ -1706,6 +1865,28 @@ export interface components {
         };
         /** @enum {string} */
         ReservationStatus: "ACTIVE" | "CANCELLED" | "FULFILLED" | "CLOSED";
+        /**
+         * @description 相对服务端读取时刻的核验窗口位置（R08，端点包含）。
+         * @enum {string}
+         */
+        VerificationState: "NOT_OPEN" | "OPEN" | "ENDED";
+        /** @description 预约派生出的核验时段视图（R08、R09）。窗口＝预约时刻前后 margin_minutes，端点包含； 核验可以发生在零点前，但夜间通行只在 [00:00,06:00) 内有效， 所以 state 与能否通行是两件事。客户端只显示，不自行判断（基线「统一日期与边界」）。 */
+        ReservationVerification: {
+            /** Format: date-time */
+            opens_at: string;
+            /** Format: date-time */
+            closes_at: string;
+            state: components["schemas"]["VerificationState"];
+            /** @description 前后裕量，配置 verification_margin_minutes（基线 R08 已确认 30）。 */
+            margin_minutes: number;
+            /** @description 二维码完整秒数，配置 pass_code_seconds（基线 R09 已确认 300）。 */
+            code_seconds: number;
+            /**
+             * Format: date-time
+             * @description 该业务夜夜间授权结束时刻（06:00）；窗口上界可以越过它，码到点即 NIGHT_ACCESS_ENDED。
+             */
+            night_access_ends_at: string;
+        };
         /** @description 一晚一条；(student_id, service_date) 唯一。version 从 1 起，每次学生动作 +1； 系统关闭（CLOSED）不加 version。修改/取消/恢复必须携带 expected_version。 */
         Reservation: {
             id: string;
@@ -1725,6 +1906,7 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            verification: components["schemas"]["ReservationVerification"];
             /** @description 仅 POST 响应在「本次预约首次跨过演示阈值」时返回；其余入口与未触发时缺省。 判定与文案全部在服务端，客户端只显示（基线「统一日期与边界」）。 */
             risk_notice?: components["schemas"]["RiskNotice"];
         };
@@ -1866,6 +2048,68 @@ export interface components {
             /** @description true 表示幂等键已存在，本次没有重复入队。 */
             deduped: boolean;
         };
+        /** @description 计数口径的唯一来源是 `app/modules/reports/summary.py`：一晚一条、取消不计、 人数按学生去重、夜数按业务夜去重。「未确认」只表示当晚没有匹配到通行记录（R15）。 */
+        ReportTotals: {
+            /** @description 去重后的学生数 */
+            students: number;
+            /** @description 去重后的业务夜数 */
+            nights: number;
+            /** @description 未确认返宿的学生夜数 */
+            unconfirmed: number;
+        };
+        ReportItem: {
+            student_id: string;
+            /** @description 合成学号；目录未同步时为「目录未同步」 */
+            school_id: string;
+            /** @description 合成姓名，绝不返回真实姓名 */
+            display_name: string;
+            /** Format: date-time */
+            planned_return_at: string;
+            status: components["schemas"]["ReservationStatus"];
+        };
+        ReportNight: {
+            /** Format: date */
+            service_date: string;
+            total: number;
+            unconfirmed: number;
+        };
+        DailyReport: {
+            /** @constant */
+            template: "DAILY_REPORT";
+            /** Format: date */
+            service_date: string;
+            /** @description 当夜门禁时段 [start, end)，由服务端判定，客户端只显示。 */
+            night_window: string[];
+            /** Format: date-time */
+            generated_at: string;
+            /** @description 本次读取的数据范围说明 */
+            scope_note: string;
+            totals: components["schemas"]["ReportTotals"];
+            /** @description 按计划返宿时刻、再按学生主键排序。 */
+            items: components["schemas"]["ReportItem"][];
+            /** @description 口径原文，必带「未确认返宿不代表已证明未归」；正文与报告同一句。 */
+            caliber_notes: string[];
+        };
+        WeeklyReport: {
+            /** @constant */
+            template: "WEEKLY_REPORT";
+            /** Format: date */
+            week_start: string;
+            /**
+             * Format: date
+             * @description 区间末夜
+             */
+            service_date: string;
+            /** @description 覆盖的业务夜数，等于配置的周报夜数 */
+            nights_covered: number;
+            /** Format: date-time */
+            generated_at: string;
+            scope_note: string;
+            totals: components["schemas"]["ReportTotals"];
+            /** @description 逐夜一行，按日期升序；没有任何预约的夜也占一行且计零。 */
+            nights: components["schemas"]["ReportNight"][];
+            caliber_notes: string[];
+        };
         ItemList: {
             items: {
                 [key: string]: unknown;
@@ -1887,6 +2131,8 @@ export interface components {
         ReservationId: string;
         StaffAccountId: string;
         NotificationId: string;
+        /** @description 业务日 YYYY-MM-DD（D 日 06:00 到 D+1 日 06:00 算同一夜）。缺省为服务端当前时刻的前一晚； 晚于服务端判定的当前业务日返回 422，客户端不得自行推算业务日归属。 */
+        ServiceDate: string;
     };
     requestBodies: never;
     headers: never;

@@ -1,6 +1,6 @@
 """预约 HTTP 入口（A 主责）。鉴权用 require(action)，数据范围交给 service 判定。"""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -14,6 +14,7 @@ from app.modules.identity.schemas import Role, SessionContext
 from app.modules.reservation import service
 from app.modules.reservation.schemas import ReservationCreate, ReservationPatch, VersionedAction
 from app.modules.risk import service as risk_service
+from app.modules.verification import windows
 
 router = APIRouter(prefix="/reservations", tags=["reservation"])
 
@@ -25,7 +26,7 @@ ReadDep = Annotated[SessionContext, Depends(require("reservation:read"))]
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-def _reservation(res) -> dict:
+def _reservation(res, now: datetime) -> dict:
     return {
         "id": res.id,
         "student_id": res.student_id,
@@ -36,6 +37,10 @@ def _reservation(res) -> dict:
         "version": res.version,
         "created_at": business_iso(res.created_at),
         "updated_at": business_iso(res.updated_at),
+        # 核验时段是预约的派生视图，判定在 verification.windows，客户端只显示。
+        "verification": windows.reservation_view(
+            res.planned_return_at, service_date=res.service_date, now=now
+        ),
     }
 
 
@@ -70,7 +75,12 @@ def list_reservations(
         scope=dict(guarded.scope),
         service_date=service_date,
     )
-    return {"items": [_reservation(r) for r in items], "next_cursor": None}
+    return {
+        "items": [
+            _reservation(r, request.app.state.clock.now()) for r in items
+        ],
+        "next_cursor": None,
+    }
 
 
 @router.get("/tonight")
@@ -84,7 +94,7 @@ def get_tonight(request: Request, guarded: ReadDep, db: SessionDep):
             {"action": "reservation:read", "role": guarded.active_role.value},
         )
     res = service.tonight(db, request.app.state.clock, student_id=student_id)
-    return _reservation(res) if res is not None else None
+    return _reservation(res, request.app.state.clock.now()) if res is not None else None
 
 
 @router.post("", status_code=201)
@@ -98,7 +108,7 @@ def create_reservation(request: Request, guarded: CreateDep, db: SessionDep, pay
         planned_return_at=payload.planned_return_at,
         reason=payload.reason,
     )
-    body = _reservation(res)
+    body = _reservation(res, request.app.state.clock.now())
     # 弹窗事实是纯派生读取，不参与预约是否通过（R06），也不落任何通知任务（R15）。
     notice = risk_service.notice_for_create(
         db, request.app.state.clock, student_id=res.student_id, service_date=res.service_date
@@ -123,7 +133,7 @@ def patch_reservation(
         planned_return_at=payload.planned_return_at,
         reason=payload.reason,
     )
-    return _reservation(res)
+    return _reservation(res, request.app.state.clock.now())
 
 
 @router.post("/{reservation_id}/cancel")
@@ -139,7 +149,7 @@ def cancel_reservation(
         actor_user_id=guarded.user_id,
         expected_version=payload.expected_version,
     )
-    return _reservation(res)
+    return _reservation(res, request.app.state.clock.now())
 
 
 @router.post("/{reservation_id}/restore")
@@ -155,7 +165,7 @@ def restore_reservation(
         actor_user_id=guarded.user_id,
         expected_version=payload.expected_version,
     )
-    return _reservation(res)
+    return _reservation(res, request.app.state.clock.now())
 
 
 @router.get("/{reservation_id}/revisions")

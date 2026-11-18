@@ -3,6 +3,7 @@ import type {
   ApiErrorBody,
   AuthSession,
   ClockState,
+  DailyReport,
   DemoAccount,
   ListResult,
   Notification,
@@ -15,6 +16,7 @@ import type {
   SessionContext,
   StaffAccount,
   StaffAccountSecret,
+  WeeklyReport,
 } from './types'
 
 const BASE = '/api/v1'
@@ -125,6 +127,10 @@ export const api = {
     }),
   reservationRevisions: (id: string) =>
     request<ListResult<ReservationRevision>>(`/reservations/${id}/revisions`),
+  dailyReport: (serviceDate?: string) =>
+    request<DailyReport>(`/reports/daily${serviceDate ? `?service_date=${serviceDate}` : ''}`),
+  weeklyReport: (serviceDate?: string) =>
+    request<WeeklyReport>(`/reports/weekly${serviceDate ? `?service_date=${serviceDate}` : ''}`),
   staffAccounts: () => request<ListResult<StaffAccount>>('/staff-accounts'),
   createStaffAccount: (body: {
     login_name: string

@@ -27,10 +27,10 @@ from app.core.errors import ApiError
 from app.db.models import BackgroundJob, Notification, Reservation
 from app.db.models.notification import NOTIFICATION_JOB_TYPE
 from app.modules.identity import service as identity_service
-from app.modules.identity.adapters import mock_accounts
 from app.modules.identity.schemas import Person, Role, SessionContext
 from app.modules.notification import templates
-from app.modules.reservation import service as reservation_service
+from app.modules.reports import readmodel
+from app.modules.reports import summary as report_summary
 from app.modules.risk import rules as risk_rules
 
 TEMPLATES = (
@@ -214,76 +214,32 @@ def enqueue(
     return job, False
 
 
+def _row(res: Reservation) -> templates.ReservationRow:
+    school_id, display_name = readmodel.labels(res.student_id)
+    return templates.ReservationRow(
+        student_id=res.student_id,
+        school_id=school_id,
+        display_name=display_name,
+        planned_return_at=res.planned_return_at,
+        status=res.status,
+    )
+
+
 def _rows_from(items: list[Reservation]) -> list[templates.ReservationRow]:
-    rows: list[templates.ReservationRow] = []
-    for res in items:
-        school_id, display_name = _labels(res.student_id)
-        rows.append(
-            templates.ReservationRow(
-                student_id=res.student_id,
-                school_id=school_id,
-                display_name=display_name,
-                planned_return_at=res.planned_return_at,
-                status=res.status,
-            )
-        )
-    return sorted(rows, key=lambda row: (row.planned_return_at, row.student_id))
-
-
-def _fetch(
-    session: Session, clock: Clock, *, service_date: date | None, student_ids: list[str] | None
-) -> list[Reservation]:
-    if student_ids:
-        scope: dict[str, object] = {"student_ids": list(student_ids), "resolved_by": "identity"}
-    else:
-        scope = {"scope": "ALL_AUTHORIZED", "resolved_by": "campus_grant"}
-    return reservation_service.list_reservations(session, clock, scope=scope, service_date=service_date)
-
-
-def _night_rows(
-    session: Session, clock: Clock, *, service_date: date, student_ids: list[str] | None
-) -> list[Reservation]:
-    items = [
-        res
-        for res in _fetch(session, clock, service_date=None, student_ids=student_ids)
-        if res.service_date == service_date
-    ]
-    return items
-
-
-def _week_rows(
-    session: Session, clock: Clock, *, week_start: date, service_date: date, student_ids: list[str] | None
-) -> list[Reservation]:
-    items = [
-        res
-        for res in _fetch(session, clock, service_date=None, student_ids=student_ids)
-        if week_start <= res.service_date <= service_date
-    ]
-    return items
+    # 取数、排序与标签都由 `reports.readmodel` 提供，正文与辅导员报告读的是同一批事实。
+    return [_row(res) for res in readmodel.ordered(items)]
 
 
 def _night_counts(items: list[Reservation], *, week_start: date, service_date: date) -> list[templates.NightCount]:
-    buckets: dict[date, list[Reservation]] = {}
-    for res in items:
-        buckets.setdefault(res.service_date, []).append(res)
-    counts: list[templates.NightCount] = []
-    for offset in range((service_date - week_start).days + 1):
-        day = week_start + timedelta(days=offset)
-        rows = [res for res in buckets.get(day, []) if res.status != "CANCELLED"]
-        unconfirmed = [res for res in rows if res.status in ("ACTIVE", "CLOSED")]
-        counts.append(
-            templates.NightCount(
-                service_date=day, total=len(rows), unconfirmed=len(unconfirmed)
-            )
+    # 计数定义全部交给 reports.summary，周报与园区统计因此天然同口径。
+    return [
+        templates.NightCount(
+            service_date=night.service_date, total=night.total, unconfirmed=night.unconfirmed
         )
-    return counts
-
-
-def _labels(student_id: str) -> tuple[str, str]:
-    person = mock_accounts.PEOPLE_BY_STUDENT_ID.get(student_id)
-    if person is None:
-        return "目录未同步", f"学生 {student_id}"
-    return person.school_id, person.display_name.split("（")[0]
+        for night in report_summary.summarize_range(
+            readmodel.facts(items), start=week_start, end=service_date
+        )
+    ]
 
 
 def risk_facts(
@@ -297,8 +253,8 @@ def risk_facts(
     """
     rule_set = risk_rules.current_rule_set()
     window_start = service_date - timedelta(days=rule_set.window_nights - 1)
-    items = _week_rows(
-        session, clock, week_start=window_start, service_date=service_date, student_ids=student_ids
+    items = readmodel.range_rows(
+        session, clock, start=window_start, end=service_date, student_ids=student_ids
     )
     by_student: dict[str, list[Reservation]] = {}
     for res in items:
@@ -313,7 +269,7 @@ def risk_facts(
         if not evaluation.crossed:
             continue
         latest = max(rows, key=lambda res: (res.service_date, res.planned_return_at))
-        school_id, display_name = _labels(student_id)
+        school_id, display_name = readmodel.labels(student_id)
         facts.append(
             templates.RiskFacts(
                 row=templates.ReservationRow(
@@ -367,16 +323,19 @@ def dispatch(
     """园区的演示投递入口：校验边界后入队，投递动作留给 worker。"""
     moment = clock.now()
     night = service_date or service_date_of(moment)
+    # 演示页面留空＝不按学生收窄，按授权范围全量派生；空列表在这里就归一成 None，
+    # 免得下游把「没填」当成「一个都不投」。
+    selected = student_ids or None
     assert_recipients(template, recipient_user_ids)
     if template == "RISK_ALERT":
-        assert_risk_triggers(session, clock, service_date=night, student_ids=student_ids)
+        assert_risk_triggers(session, clock, service_date=night, student_ids=selected)
     return enqueue(
         session,
         clock,
         template=template,
         service_date=night,
         recipient_user_ids=recipient_user_ids,
-        student_ids=student_ids,
+        student_ids=selected,
         requested_by=actor.user_id,
         demo_manual=True,
         deliver_now=deliver_now,
@@ -432,7 +391,13 @@ def _render_input(
 ) -> list[tuple[str, templates.RenderInput]]:
     """返回 [(幂等键后缀, 渲染输入)]；风险提示按学生拆分，其余一条。"""
     if template == "NIGHT_ROSTER":
-        items = [res for res in _night_rows(session, clock, service_date=service_date, student_ids=student_ids) if res.status != "CANCELLED"]
+        items = [
+            res
+            for res in readmodel.night_rows(
+                session, clock, service_date=service_date, student_ids=student_ids
+            )
+            if res.status != "CANCELLED"
+        ]
         return [
             (
                 "",
@@ -454,19 +419,21 @@ def _render_input(
                     person=person,
                     service_date=service_date,
                     rows=_rows_from(
-                        _night_rows(session, clock, service_date=service_date, student_ids=student_ids)
+                        readmodel.night_rows(
+                            session, clock, service_date=service_date, student_ids=student_ids
+                        )
                     ),
                     demo_manual=demo_manual,
                 ),
             )
         ]
     if template == "WEEKLY_REPORT":
-        week_start = service_date - timedelta(days=get_settings().weekly_report_nights - 1)
-        items = _week_rows(
+        week_start, _ = readmodel.week_window(service_date)
+        items = readmodel.range_rows(
             session,
             clock,
-            week_start=week_start,
-            service_date=service_date,
+            start=week_start,
+            end=service_date,
             student_ids=student_ids,
         )
         return [

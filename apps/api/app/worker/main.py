@@ -5,8 +5,9 @@ planned_at, status, lease_until, attempts, last_error, done_at, payload)。
 处理器在本进程内注册：A 的通知投递在 `app.modules.notification.handlers`，
 B 的名单/导出/对账处理器同样在此处 import 进来，不另起一套调度。
 
-注意：worker 用真实系统时间判定 `planned_at`，与 API 进程的演示时钟偏移不互通。
-演示里要让任务立刻可消费，投递时带 `deliver_now`；跨进程共享时钟偏移是后续事项（docs/13）。
+时钟说明：`build_clock()` 默认是共享偏移时钟，偏移量落在 `DEMO_CLOCK_FILE`（默认
+`apps/api/.demo_clock.json`）里，API 用 `POST /demo/clock` 推进后 worker 下一轮即遵守，
+不需要重启进程。任务到点判定因此和演示页面看到的是同一个「现在」。
 """
 
 from __future__ import annotations

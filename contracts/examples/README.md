@@ -15,6 +15,8 @@
 | `reservation-revisions-success.json` | 同一预约的只追加修订历史（CREATE + RESCHEDULE） | A |
 | `reservation-tonight-null.json` | 当夜无预约时 `/reservations/tonight` 返回 null | A |
 | `demo-clock-state-success.json` | 演示时钟：服务端判定的业务时间与业务夜 | A |
+| `report-daily-success.json` | 辅导员按需读取的前一晚日报事实（与 08:30 邮件同口径，A 的 `reports.readmodel` 直接渲染） | A |
+| `report-weekly-success.json` | 周报区间：逐夜七行含空夜，取消不计 | A |
 | `notification-inbox-success.json` | 辅导员模拟收件箱：统一身份账户只有邮件预览条目 | A |
 | `notification-inbox-staff-success.json` | 宿管模拟收件箱：工号账号只有站内待办条目 | A |
 | `notification-dispatch-success.json` | 园区演示投递 23:30 名单后的任务回执 | A |

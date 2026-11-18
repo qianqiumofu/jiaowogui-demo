@@ -534,6 +534,79 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /reports/daily:
+    get:
+      summary: 辅导员日报事实（按需读取）
+      description: >-
+        只返回当前账号负责关系内、指定业务夜的预约事实与按 `reports.summary` 口径算出的计数
+        （report:read）。缺省看服务端当前时刻的前一晚；传入晚于当前业务日的日期返回 422。
+        与 08:30 投递的日报邮件同取数、同口径，两处数字不可能不一致。未确认返宿只是没有匹配到
+        通行记录，接口不据此生成任何提醒（R15）。负责关系尚未同步时返回 403 `SCOPE_UNRESOLVED`。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ServiceDate"
+      responses:
+        "200":
+          description: 当夜报告
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyReport"
+        "403":
+          description: 无权或负责关系缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: 业务日期不可查看
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /reports/weekly:
+    get:
+      summary: 辅导员周报事实（按需读取）
+      description: >-
+        以指定业务夜为末夜，向前覆盖 `weekly_report_nights` 个业务夜（含空夜，逐夜一行）。
+        计数与投递出去的周报正文同口径；一周内一个预约都没有也返回全零行，不返回空对象。
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ServiceDate"
+      responses:
+        "200":
+          description: 区间报告
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyReport"
+        "403":
+          description: 无权或负责关系缺失
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: 业务日期不可查看
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /reports/subscriptions:
+    get:
+      summary: 报告订阅关系（占位）
+      description: 订阅要落表，迁移号排在 B 的头之后，正式版接通前保持 501。
+      security: [{ bearerAuth: [] }]
+      responses:
+        "501":
+          description: 能力未实现
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /buildings/{building_id}/tonight:
     get:
       summary: 宿管当晚名单
@@ -790,6 +863,15 @@ components:
       required: true
       schema: { type: string }
 
+    ServiceDate:
+      name: service_date
+      in: query
+      required: false
+      description: >-
+        业务日 YYYY-MM-DD（D 日 06:00 到 D+1 日 06:00 算同一夜）。缺省为服务端当前时刻的前一晚；
+        晚于服务端判定的当前业务日返回 422，客户端不得自行推算业务日归属。
+      schema: { type: string, format: date }
+
   schemas:
     Role:
       type: string
@@ -995,6 +1077,34 @@ components:
       type: string
       enum: [ACTIVE, CANCELLED, FULFILLED, CLOSED]
 
+    VerificationState:
+      type: string
+      enum: [NOT_OPEN, OPEN, ENDED]
+      description: 相对服务端读取时刻的核验窗口位置（R08，端点包含）。
+
+    ReservationVerification:
+      type: object
+      description: >-
+        预约派生出的核验时段视图（R08、R09）。窗口＝预约时刻前后 margin_minutes，端点包含；
+        核验可以发生在零点前，但夜间通行只在 [00:00,06:00) 内有效，
+        所以 state 与能否通行是两件事。客户端只显示，不自行判断（基线「统一日期与边界」）。
+      required:
+        [opens_at, closes_at, state, margin_minutes, code_seconds, night_access_ends_at]
+      properties:
+        opens_at: { type: string, format: date-time }
+        closes_at: { type: string, format: date-time }
+        state: { $ref: "#/components/schemas/VerificationState" }
+        margin_minutes:
+          type: integer
+          description: 前后裕量，配置 verification_margin_minutes（基线 R08 已确认 30）。
+        code_seconds:
+          type: integer
+          description: 二维码完整秒数，配置 pass_code_seconds（基线 R09 已确认 300）。
+        night_access_ends_at:
+          type: string
+          format: date-time
+          description: 该业务夜夜间授权结束时刻（06:00）；窗口上界可以越过它，码到点即 NIGHT_ACCESS_ENDED。
+
     Reservation:
       type: object
       description: >-
@@ -1002,7 +1112,7 @@ components:
         系统关闭（CLOSED）不加 version。修改/取消/恢复必须携带 expected_version。
       required:
         [id, student_id, service_date, status, planned_return_at, reason,
-         version, created_at, updated_at]
+         version, created_at, updated_at, verification]
       properties:
         id: { type: string }
         student_id: { type: string }
@@ -1018,6 +1128,7 @@ components:
         version: { type: integer }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        verification: { $ref: "#/components/schemas/ReservationVerification" }
         risk_notice:
           allOf:
             - $ref: "#/components/schemas/RiskNotice"
@@ -1241,6 +1352,78 @@ components:
         deduped:
           type: boolean
           description: true 表示幂等键已存在，本次没有重复入队。
+
+    ReportTotals:
+      type: object
+      description: >-
+        计数口径的唯一来源是 `app/modules/reports/summary.py`：一晚一条、取消不计、
+        人数按学生去重、夜数按业务夜去重。「未确认」只表示当晚没有匹配到通行记录（R15）。
+      required: [students, nights, unconfirmed]
+      properties:
+        students: { type: integer, description: 去重后的学生数 }
+        nights: { type: integer, description: 去重后的业务夜数 }
+        unconfirmed: { type: integer, description: 未确认返宿的学生夜数 }
+
+    ReportItem:
+      type: object
+      required: [student_id, school_id, display_name, planned_return_at, status]
+      properties:
+        student_id: { type: string }
+        school_id: { type: string, description: 合成学号；目录未同步时为「目录未同步」 }
+        display_name: { type: string, description: 合成姓名，绝不返回真实姓名 }
+        planned_return_at: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/ReservationStatus" }
+
+    ReportNight:
+      type: object
+      required: [service_date, total, unconfirmed]
+      properties:
+        service_date: { type: string, format: date }
+        total: { type: integer }
+        unconfirmed: { type: integer }
+
+    DailyReport:
+      type: object
+      required: [template, service_date, night_window, generated_at, scope_note, totals, items, caliber_notes]
+      properties:
+        template: { type: string, const: DAILY_REPORT }
+        service_date: { type: string, format: date }
+        night_window:
+          type: array
+          minItems: 2
+          maxItems: 2
+          description: 当夜门禁时段 [start, end)，由服务端判定，客户端只显示。
+          items: { type: string, format: date-time }
+        generated_at: { type: string, format: date-time }
+        scope_note: { type: string, description: 本次读取的数据范围说明 }
+        totals: { $ref: "#/components/schemas/ReportTotals" }
+        items:
+          type: array
+          description: 按计划返宿时刻、再按学生主键排序。
+          items: { $ref: "#/components/schemas/ReportItem" }
+        caliber_notes:
+          type: array
+          description: 口径原文，必带「未确认返宿不代表已证明未归」；正文与报告同一句。
+          items: { type: string }
+
+    WeeklyReport:
+      type: object
+      required: [template, week_start, service_date, nights_covered, generated_at, scope_note, totals, nights, caliber_notes]
+      properties:
+        template: { type: string, const: WEEKLY_REPORT }
+        week_start: { type: string, format: date }
+        service_date: { type: string, format: date, description: 区间末夜 }
+        nights_covered: { type: integer, description: 覆盖的业务夜数，等于配置的周报夜数 }
+        generated_at: { type: string, format: date-time }
+        scope_note: { type: string }
+        totals: { $ref: "#/components/schemas/ReportTotals" }
+        nights:
+          type: array
+          description: 逐夜一行，按日期升序；没有任何预约的夜也占一行且计零。
+          items: { $ref: "#/components/schemas/ReportNight" }
+        caliber_notes:
+          type: array
+          items: { type: string }
 
     ItemList:
       type: object

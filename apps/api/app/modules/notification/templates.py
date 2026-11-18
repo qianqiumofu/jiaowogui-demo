@@ -15,11 +15,11 @@ from datetime import date, datetime
 
 from app.core.clock import business_iso
 from app.modules.identity.schemas import AccountSource, Person, Role
+from app.modules.reports.summary import UNCONFIRMED_NOTE
 
 DAILY_CLOSING_EMAIL = "本邮件由系统自动生成，请勿回复。"
 DAILY_CLOSING_INBOX = "本条为站内待办，无需回复。"
-# R15 的固定口径说明：任何提到「未确认返宿」的正文都必须带上这一句。
-UNCONFIRMED_NOTE = "未确认返宿只表示当晚没有匹配到通行记录，不代表已经证明未归，系统不据此提醒、催办或升级。"
+# R15 的固定口径说明只写在 `reports.summary` 里，正文与按需报告引同一句。
 
 STATUS_LABELS = {
     "ACTIVE": "未确认返宿",

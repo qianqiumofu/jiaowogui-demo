@@ -1,0 +1,54 @@
+{
+  "template": "WEEKLY_REPORT",
+  "week_start": "2026-11-09",
+  "service_date": "2026-11-15",
+  "nights_covered": 7,
+  "generated_at": "2026-11-16T09:00:00+08:00",
+  "scope_note": "只统计当前账号负责关系内的学生。",
+  "totals": {
+    "students": 2,
+    "nights": 3,
+    "unconfirmed": 3
+  },
+  "nights": [
+    {
+      "service_date": "2026-11-09",
+      "total": 0,
+      "unconfirmed": 0
+    },
+    {
+      "service_date": "2026-11-10",
+      "total": 0,
+      "unconfirmed": 0
+    },
+    {
+      "service_date": "2026-11-11",
+      "total": 2,
+      "unconfirmed": 1
+    },
+    {
+      "service_date": "2026-11-12",
+      "total": 0,
+      "unconfirmed": 0
+    },
+    {
+      "service_date": "2026-11-13",
+      "total": 1,
+      "unconfirmed": 1
+    },
+    {
+      "service_date": "2026-11-14",
+      "total": 0,
+      "unconfirmed": 0
+    },
+    {
+      "service_date": "2026-11-15",
+      "total": 2,
+      "unconfirmed": 1
+    }
+  ],
+  "caliber_notes": [
+    "取消的夜晚不计入任何统计。",
+    "未确认返宿只表示当晚没有匹配到通行记录，不代表已经证明未归，系统不据此提醒、催办或升级。"
+  ]
+}

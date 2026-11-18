@@ -22,8 +22,19 @@ PASSWORD = "demo1234"
 API_ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def isolated_demo_clock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """每个用例用独立的演示时钟文件，防止一个用例推进的偏移漏进下一个。"""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("DEMO_CLOCK_FILE", str(tmp_path / "demo_clock.json"))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture()
-def client() -> Iterator[TestClient]:
+def client(isolated_demo_clock: None) -> Iterator[TestClient]:
     with TestClient(create_app()) as test_client:
         yield test_client
 

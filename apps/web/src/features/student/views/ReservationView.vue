@@ -2,11 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { ApiRequestError, api } from '@/shared/api/client'
+import RevisionTimeline from '@/features/student/components/RevisionTimeline.vue'
+import { STATUS_TEXT, VERIFICATION_HINT, VERIFICATION_TEXT } from '@/features/student/labels'
 import type {
   ClockState,
   ListResult,
   Reservation,
   ReservationRevision,
+  ReservationVerification,
   RiskNotice,
 } from '@/shared/api/types'
 import StubPanel from '@/shared/components/StubPanel.vue'
@@ -27,23 +30,7 @@ const mode = ref<'idle' | 'create' | 'edit'>('idle')
 const history = ref<ListResult<ReservationRevision> | null>(null)
 const historyOpen = ref(false)
 
-const STATUS_TEXT: Record<string, string> = {
-  ACTIVE: '预约生效中',
-  CANCELLED: '已取消',
-  FULFILLED: '已返宿',
-  CLOSED: '业务夜已结束',
-}
-
-const SOURCE_TEXT: Record<string, string> = {
-  CREATE: '创建',
-  RESCHEDULE: '改期',
-  CANCEL: '取消',
-  RESTORE: '恢复',
-  CLOSE: '系统关闭',
-}
-
 const statusText = computed(() => STATUS_TEXT[reservation.value?.status ?? ''] ?? '')
-
 // 门禁时段由服务端给出（night_window），这里只按它列举档位，不写死 00:00–06:00。
 const SLOT_STEP_MINUTES = 15
 
@@ -78,6 +65,37 @@ const nightTime = computed(() => {
 })
 
 const canAct = computed(() => reservation.value?.status === 'ACTIVE')
+
+const verification = computed<ReservationVerification | null>(() =>
+  reservation.value?.status === 'ACTIVE' ? reservation.value.verification : null,
+)
+
+const gateStateText = computed(() => VERIFICATION_TEXT[verification.value?.state ?? ''] ?? '')
+
+const gateHintText = computed(() => VERIFICATION_HINT[verification.value?.state ?? ''] ?? '')
+
+const gateRangeText = computed(() => {
+  const view = verification.value
+  if (!view) return ''
+  const sameDay = view.opens_at.slice(0, 10) === view.closes_at.slice(0, 10)
+  return sameDay
+    ? `${view.opens_at.slice(11, 16)}–${view.closes_at.slice(11, 16)}`
+    : `${view.opens_at.slice(5, 16)} 起 – ${view.closes_at.slice(5, 16)}`
+})
+
+const gateCodeText = computed(() => {
+  const view = verification.value
+  if (!view) return ''
+  return `窗口前后各 ${view.margin_minutes} 分钟，二维码完整 ${view.code_seconds} 秒，通行截至 ${view.night_access_ends_at.slice(11, 16)}。`
+})
+
+const gateIdleText = computed(() => {
+  const status = reservation.value?.status
+  if (status === 'CANCELLED') return '预约已取消，恢复之后才谈得上核验。'
+  if (status === 'FULFILLED') return '本夜已有一次正式返宿记录，无需再核验。'
+  if (status === 'CLOSED') return '业务夜已过 06:00，本夜不再核验。'
+  return '预约成功后这里显示今夜核验时段。'
+})
 
 function toMinutes(moment: string): number {
   return Number(moment.slice(11, 13)) * 60 + Number(moment.slice(14, 16))
@@ -337,12 +355,21 @@ onMounted(async () => {
       <header class="panel__head">
         <h2>核验与出码</h2>
       </header>
-      <p class="panel__line">核验窗口由服务端判定，前端只显示结果。</p>
+      <p class="panel__line">核验时段由服务端判定，本页面只显示结果。</p>
+
+      <div v-if="verification" class="resv__gate" :data-state="verification.state">
+        <p class="resv__gateState">{{ gateStateText }}</p>
+        <p class="resv__gateRange">{{ gateRangeText }}</p>
+        <p class="resv__gateHint">{{ gateHintText }}</p>
+        <p class="resv__gateMeta">{{ gateCodeText }}</p>
+      </div>
+      <p v-else class="panel__line">{{ gateIdleText }}</p>
+
       <StubPanel
-        title="现场核验后签发二维码"
+        title="核验通过后的二维码"
         owner="A"
         milestone="M3"
-        note="预约时间前后 30 分钟内完成现场核验，核验通过即签发五分钟有效的二维码。"
+        note="出码与门禁核销随 B 的签码服务接通，码面会写明是模拟凭证。"
       />
     </section>
 
@@ -354,14 +381,7 @@ onMounted(async () => {
         </button>
       </header>
       <p v-if="!historyOpen" class="panel__line">改期不限次数，每一次都会留痕。</p>
-      <ol v-else-if="history" class="resv__log">
-        <li v-for="item in history.items" :key="item.id" class="resv__logItem">
-          <span class="resv__logSource">{{ SOURCE_TEXT[item.source] ?? item.source }}</span>
-          <span class="resv__logTime">{{ item.changed_at.slice(5, 10) }} {{ item.changed_at.slice(11, 16) }}</span>
-          <span class="resv__logPlanned">{{ item.planned_return_at.slice(11, 16) }}</span>
-          <span v-if="item.reason" class="resv__logReason">{{ item.reason }}</span>
-        </li>
-      </ol>
+      <RevisionTimeline v-else-if="history" :items="history.items" />
       <p v-else class="panel__line">读取中……</p>
     </section>
   </div>

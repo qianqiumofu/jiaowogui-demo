@@ -7,5 +7,13 @@
   "reason": "实验室跑实验，预计一点半后回。",
   "version": 2,
   "created_at": "2026-11-16T19:02:11+08:00",
-  "updated_at": "2026-11-16T23:41:52+08:00"
+  "updated_at": "2026-11-16T23:41:52+08:00",
+  "verification": {
+    "opens_at": "2026-11-17T01:00:00+08:00",
+    "closes_at": "2026-11-17T02:00:00+08:00",
+    "state": "NOT_OPEN",
+    "margin_minutes": 30,
+    "code_seconds": 300,
+    "night_access_ends_at": "2026-11-17T06:00:00+08:00"
+  }
 }

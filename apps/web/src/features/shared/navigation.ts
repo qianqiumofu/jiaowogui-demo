@@ -9,7 +9,7 @@ export interface NavItem {
 
 const ITEMS: Array<NavItem & { roles: Role[]; action?: string }> = [
   { to: '/app/student/reservation', name: 'student-reservation', label: '晚归预约', roles: ['STUDENT'], action: 'reservation:create', stage: 'M2' },
-  { to: '/app/student/records', name: 'student-records', label: '我的返宿记录', roles: ['STUDENT'], stage: 'M3' },
+  { to: '/app/student/records', name: 'student-records', label: '我的记录', roles: ['STUDENT'], stage: 'M2' },
   { to: '/app/counselor/students', name: 'counselor-students', label: '负责学生', roles: ['COUNSELOR'], stage: 'M1' },
   { to: '/app/counselor/reports', name: 'counselor-reports', label: '日报与周报', roles: ['COUNSELOR'], stage: 'M4' },
   { to: '/app/dorm/tonight', name: 'dorm-tonight', label: '今晚名单', roles: ['DORM_MANAGER'], stage: 'M2' },

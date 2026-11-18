@@ -12,12 +12,12 @@
 | risk | A | 占位 | M4 规则引擎、弹窗、周期邮件、跟进 |
 | reports | A | 占位 | M4 日报周报与订阅 |
 | notification | A | 空 | M4 worker/outbox/模拟收件箱 |
-| directory | B | 空 | M1 目录适配、住宿、负责关系、迁移 |
-| access | B | 占位 | M3 签码撤销核销、设备认证、回执对账 |
-| returns | B | 占位 | M3 唯一返宿写入、补录、纠错 |
-| building_list | B | 占位 | M2 当晚名单与 23:30 快照 |
-| statistics | B | 空 | M4 全校统计口径 |
-| exports | B | 空 | M4 受控导出 |
+| directory | B | 已可用：学院/片区/楼栋目录、楼栋名册检索、住宿与联系方式读取 | 真实目录源接入后替换合成 seed |
+| access | B | 已可用：设备身份核验、扫码核销并落正式返宿事实 | 通行码撤销/对账接口未开工，设备凭据下发方式待确认 |
+| returns | B | 已可用：唯一返宿写入（扫码与补录同约束）、返宿记录查询 | 纠错流程仍按 Demo 口径 |
+| building_list | B | 已实现读模型，等 A 的预约源 | M2 当晚名单与 24:00 快照 |
+| statistics | B | 已可用：全校三值统计（人数/晚归夜数/返宿次数分列）、筛选器选项 | 预约与未确认两列待 A 的来源落地 |
+| exports | B | 已可用：受控导出走 EXPORT_BUILD worker 处理器，CSV 落库、按保留期遗忘 | 保留期与导出字段待校方确认 |
 | duty | B | 占位 | M1 代班生效范围 |
 
 占位接口返回 501 `NOT_IMPLEMENTED`，列表类返回 `{"items": [], "next_cursor": null}`，

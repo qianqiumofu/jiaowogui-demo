@@ -9,6 +9,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
+from app.db.base import Base
+import app.db.models  # noqa: F401  注册 B 的表到 Base.metadata
 
 config = context.config
 if config.config_file_name is not None:
@@ -19,8 +21,7 @@ if not database_url:
     raise RuntimeError("缺少 DATABASE_URL，请先在 apps/api/.env 配置。")
 config.set_main_option("sqlalchemy.url", database_url)
 
-# B 建立 models.py 后改为 from app.db.base import Base; target_metadata = Base.metadata
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

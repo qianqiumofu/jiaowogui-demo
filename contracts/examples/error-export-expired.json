@@ -1,0 +1,9 @@
+{
+  "code": "EXPORT_EXPIRED",
+  "message": "导出内容已超过保留期，请重新发起。",
+  "request_id": "req_synth_0011",
+  "details": {
+    "export_id": "exp_demo_park_east1",
+    "expires_at": "2026-11-24T18:00:44+08:00"
+  }
+}

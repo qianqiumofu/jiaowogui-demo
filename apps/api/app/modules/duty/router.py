@@ -10,6 +10,7 @@ from app.modules.authorization.dependencies import require
 router = APIRouter(prefix="/duty-assignments", tags=["duty"])
 
 ReadDep = Annotated[object, Depends(require("duty:read"))]
+SwitchDep = Annotated[object, Depends(require("duty:switch"))]
 
 
 @router.get("")
@@ -18,5 +19,5 @@ def list_duty(guarded: ReadDep) -> dict:
 
 
 @router.post("/switch")
-def switch(payload: dict, guarded: ReadDep) -> dict:
+def switch(payload: dict, guarded: SwitchDep) -> dict:
     raise not_implemented("M1", "跨楼栋代班生效与失效校验")

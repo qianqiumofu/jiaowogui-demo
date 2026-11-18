@@ -22,6 +22,8 @@ ACTIONS: dict[str, set[Role]] = {
     "risk:ack": {Role.COUNSELOR, Role.DORM_MANAGER},
     # B：宿管端与园区端
     "building:tonight": {Role.DORM_MANAGER},
+    "contact:read_duty": {Role.DORM_MANAGER},
+    "building_residents:read_duty": {Role.DORM_MANAGER},
     "manual_return:create": {Role.DORM_MANAGER},
     "duty:read": {Role.DORM_MANAGER, Role.COUNSELOR},
     "duty:switch": {Role.DORM_MANAGER},

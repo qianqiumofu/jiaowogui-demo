@@ -1,0 +1,10 @@
+{
+  "code": "RETURN_EXISTS",
+  "message": "该业务夜已有正式返宿记录，本次扫码不放行。",
+  "request_id": "req_synth_0008",
+  "details": {
+    "return_id": "ret_synth_0002",
+    "source": "MANUAL",
+    "service_date": "2026-11-15"
+  }
+}

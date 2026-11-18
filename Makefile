@@ -29,7 +29,7 @@ api-test:
 	$(API_PY) -m pytest apps/api/tests
 
 worker-once:
-	$(API_PY) apps/api/app/worker/main.py --once
+	PYTHONPATH=$(API_PYTHONPATH) $(API_PY) -m app.worker.main --once
 
 web-install:
 	npm --prefix apps/web ci

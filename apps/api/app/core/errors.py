@@ -47,6 +47,19 @@ def forbidden(action: str) -> ApiError:
     )
 
 
+def out_of_scope(resource_type: str, resource_id: str, allowed: list[str]) -> ApiError:
+    return ApiError(
+        status.HTTP_403_FORBIDDEN,
+        "OUT_OF_SCOPE",
+        "目标不在当前有效数据范围内。",
+        {
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "allowed": allowed,
+        },
+    )
+
+
 def database_unavailable() -> ApiError:
     return ApiError(
         status.HTTP_503_SERVICE_UNAVAILABLE,

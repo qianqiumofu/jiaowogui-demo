@@ -2,11 +2,20 @@ import type {
   AllowedActions,
   ApiErrorBody,
   AuthSession,
+  BuildingTonight,
   ClockState,
   DemoAccount,
+  ExportJob,
   ListResult,
+  ResidentList,
+  ReturnRecord,
   Role,
+  ReturnRecords,
+  ScanResult,
   SessionContext,
+  StatisticsFilters,
+  StatisticsResult,
+  StudentContact,
 } from './types'
 
 const BASE = '/api/v1'
@@ -65,6 +74,44 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return payload as T
 }
 
+function queryString(params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) if (value) query.set(key, value)
+  return query.toString() ? `?${query.toString()}` : ''
+}
+
+// CSV 不是 JSON，走同一条鉴权但单独解析；失败时后端仍按契约返回错误信封。
+async function downloadCsv(path: string): Promise<{ fileName: string; text: string }> {
+  const headers = new Headers({ Accept: 'text/csv' })
+  const token = readToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  let response: Response
+  try {
+    response = await fetch(`${BASE}${path}`, { headers })
+  } catch {
+    throw new ApiRequestError('NETWORK_UNAVAILABLE', '连不上后端，请确认 API 已在 8000 端口启动。', '')
+  }
+
+  const text = await response.text()
+  if (!response.ok) {
+    let body: Partial<ApiErrorBody> = {}
+    try {
+      body = JSON.parse(text) as Partial<ApiErrorBody>
+    } catch {
+      /* 非 JSON 的错误体只保留 HTTP 状态码 */
+    }
+    throw new ApiRequestError(
+      body.code ?? `HTTP_${response.status}`,
+      body.message ?? '请求未成功。',
+      body.request_id ?? '',
+      body.details ?? {},
+    )
+  }
+  const match = /filename="([^"]+)"/.exec(response.headers.get('content-disposition') ?? '')
+  return { fileName: match?.[1] ?? 'export.csv', text }
+}
+
 export const api = {
   demoAccounts: () => request<DemoAccount[]>('/auth/demo-accounts'),
   login: async (loginName: string, password: string) => {
@@ -92,10 +139,45 @@ export const api = {
   allowedActions: () => request<AllowedActions>('/authz/actions'),
   reservations: () => request<ListResult<Record<string, unknown>>>('/reservations'),
   buildingTonight: (buildingId: string) =>
-    request<ListResult<Record<string, unknown>>>(`/buildings/${buildingId}/tonight`),
+    request<BuildingTonight>(`/buildings/${buildingId}/tonight`),
+  studentContact: (studentId: string) =>
+    request<StudentContact>(`/directory/students/${studentId}/contact`),
+  buildingResidents: (buildingId: string, query?: string) => {
+    const suffix = query ? `?q=${encodeURIComponent(query)}` : ''
+    return request<ResidentList>(`/directory/buildings/${buildingId}/residents${suffix}`)
+  },
   dutyAssignments: () => request<ListResult<Record<string, unknown>>>('/duty-assignments'),
-  returnRecords: () => request<ListResult<Record<string, unknown>>>('/return-records'),
+  returnRecords: (params: { serviceDate?: string; buildingId?: string } = {}) => {
+    const query = new URLSearchParams()
+    if (params.serviceDate) query.set('service_date', params.serviceDate)
+    if (params.buildingId) query.set('building_id', params.buildingId)
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return request<ReturnRecords>(`/return-records${suffix}`)
+  },
+  manualReturn: (payload: Record<string, unknown>) =>
+    request<ReturnRecord>('/return-records/manual', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  // 门口终端用设备身份而非学生会话：凭据走请求头，码值走请求体。
+  deviceScan: (deviceId: string, deviceToken: string, code: string) =>
+    request<ScanResult>('/device/scan', {
+      method: 'POST',
+      headers: { 'x-device-id': deviceId, 'x-device-token': deviceToken },
+      body: JSON.stringify({ code }),
+    }),
   riskEvents: () => request<ListResult<Record<string, unknown>>>('/risk-events'),
+  statistics: (params: Record<string, string | undefined> = {}) =>
+    request<StatisticsResult>(`/statistics${queryString(params)}`),
+  statisticsFilters: () => request<StatisticsFilters>('/statistics/filters'),
+  createExport: (params: Record<string, string | undefined>, idempotencyKey?: string) =>
+    request<ExportJob>('/exports', {
+      method: 'POST',
+      body: JSON.stringify({ report: 'STATISTICS', params, idempotency_key: idempotencyKey }),
+    }),
+  myExports: () => request<ListResult<ExportJob>>('/exports'),
+  exportJob: (exportId: string) => request<ExportJob>(`/exports/${exportId}`),
+  downloadExport: (exportId: string) => downloadCsv(`/exports/${exportId}/download`),
   clock: () => request<ClockState>('/demo/clock'),
   setClock: (offsetMinutes: number) =>
     request<ClockState>('/demo/clock', {

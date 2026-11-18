@@ -6,7 +6,7 @@ import type { ListResult } from '@/shared/api/types'
 
 const props = defineProps<{
   title: string
-  loader: () => Promise<ListResult<Record<string, unknown>>>
+  loader: () => Promise<ListResult<unknown>>
   owner: 'A' | 'B'
   stage: string
   milestone: string
@@ -24,7 +24,7 @@ async function load() {
   } catch (cause) {
     if (cause instanceof ApiRequestError) {
       if (cause.code === 'NOT_IMPLEMENTED') state.value = { kind: 'pending', code: cause.code, message: cause.message }
-      else if (cause.code.startsWith('FORBIDDEN') || cause.code === 'SCOPE_UNRESOLVED')
+      else if (cause.code.startsWith('FORBIDDEN') || cause.code === 'SCOPE_UNRESOLVED' || cause.code === 'OUT_OF_SCOPE')
         state.value = { kind: 'denied', code: cause.code, message: cause.message }
       else state.value = { kind: 'error', code: cause.code, message: cause.message, requestId: cause.requestId }
     } else {

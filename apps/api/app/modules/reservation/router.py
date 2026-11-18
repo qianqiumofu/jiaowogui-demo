@@ -6,15 +6,15 @@ from fastapi import APIRouter, Depends
 
 from app.core.errors import not_implemented
 from app.modules.authorization.dependencies import require
-from app.modules.identity.dependencies import ContextDep
 
 router = APIRouter(prefix="/reservations", tags=["reservation"])
 
 CreateDep = Annotated[object, Depends(require("reservation:create"))]
+ReadDep = Annotated[object, Depends(require("reservation:read"))]
 
 
 @router.get("")
-def list_reservations(context: ContextDep, service_date: str | None = None) -> dict:
+def list_reservations(guarded: ReadDep, service_date: str | None = None) -> dict:
     """返回 {"items": [...], "next_cursor": null}；M2 前为空。"""
     return {"items": [], "next_cursor": None}
 

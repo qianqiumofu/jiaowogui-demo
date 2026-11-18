@@ -1,0 +1,26 @@
+{
+  "colleges": [
+    { "org_id": "org_college_cs", "name": "计算机学院" },
+    { "org_id": "org_college_math", "name": "数学学院" },
+    { "org_id": "org_college_phys", "name": "物理学院" }
+  ],
+  "parks": [
+    { "org_id": "campus_park_west1", "name": "西一区", "building_count": 1 },
+    { "org_id": "campus_park_west2", "name": "西二区", "building_count": 1 },
+    { "org_id": "campus_park_west3", "name": "西三区", "building_count": 1 },
+    { "org_id": "campus_park_west4", "name": "西四区", "building_count": 1 },
+    { "org_id": "campus_park_west5", "name": "西五区", "building_count": 1 },
+    { "org_id": "campus_park_east1", "name": "东一区", "building_count": 2 },
+    { "org_id": "campus_park_east2", "name": "东二区", "building_count": 1 },
+    { "org_id": "campus_park_east3", "name": "东三区", "building_count": 1 },
+    { "org_id": "campus_park_east4", "name": "东四区", "building_count": 0 }
+  ],
+  "buildings": [
+    { "building_id": "bldg_a1", "name": "A1 号楼", "code": "A1", "park_org_id": "campus_park_east1" },
+    { "building_id": "bldg_a2", "name": "A2 号楼", "code": "A2", "park_org_id": "campus_park_east1" },
+    { "building_id": "bldg_a3", "name": "A3 号楼", "code": "A3", "park_org_id": "campus_park_west1" }
+  ],
+  "grades": ["2023", "2024", "2025"],
+  "genders": ["MALE", "FEMALE"],
+  "return_sources": ["QR", "MANUAL"]
+}

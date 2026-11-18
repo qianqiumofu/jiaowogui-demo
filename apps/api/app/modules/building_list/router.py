@@ -1,17 +1,19 @@
-"""楼栋名单模块占位（B 主责，M2 填充）：仅有效值班楼栋可见。"""
+"""楼栋名单模块（B 主责）：仅有效值班楼栋可见，24:00 汇总后实时标异动。"""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
-from app.core.errors import not_implemented
 from app.modules.authorization.dependencies import require
+from app.modules.building_list import service
+from app.modules.identity.schemas import SessionContext
 
 router = APIRouter(prefix="/buildings", tags=["building-list"])
 
-ReadDep = Annotated[object, Depends(require("building:tonight"))]
+TonightDep = Annotated[SessionContext, Depends(require("building:tonight"))]
 
 
 @router.get("/{building_id}/tonight")
-def tonight(building_id: str, guarded: ReadDep) -> dict:
-    raise not_implemented("M2", "当晚预约名单快照与实时更新")
+def tonight(building_id: str, context: TonightDep, request: Request) -> dict:
+    service.ensure_building_in_scope(context.scope, building_id)
+    return service.tonight(building_id, request.app.state.clock.now())

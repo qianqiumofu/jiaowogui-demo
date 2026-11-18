@@ -1,0 +1,9 @@
+{
+  "student_id": "stu_synth_0001",
+  "school_id": "2023S0001",
+  "display_name": "张三（合成）",
+  "building_id": "bldg_a1",
+  "room_no": "A1-301",
+  "gender": "MALE",
+  "phone": "13800000001"
+}

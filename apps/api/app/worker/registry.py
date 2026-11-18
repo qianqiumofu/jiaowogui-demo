@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -12,7 +12,7 @@ HANDLERS: dict[str, Callable[[dict], None]] = {}
 
 
 def handler(job_type: str) -> Callable[[Callable[[dict], None]], Callable[[dict], None]]:
-    """B 在此注册自有处理器（23:30 名单、导出、设备对账），不另起一套调度。"""
+    """B 在此注册自有处理器（24:00 名单、导出、设备对账），不另起一套调度。"""
 
     def wrapper(func: Callable[[dict], None]) -> Callable[[dict], None]:
         HANDLERS[job_type] = func
@@ -71,3 +71,24 @@ def mark_failed(job_id: str, error: str, now: datetime) -> None:
             ),
             {"e": error[:500], "now": now, "id": job_id},
         )
+
+
+@handler("DORM_TONIGHT_SNAPSHOT")
+def dorm_tonight_snapshot(job: dict) -> None:
+    """24:00 楼栋名单汇总（B）。A 的 `reservation.list_for_building` 未落地时保持 501 重试。"""
+    from app.modules.building_list import service as building_list
+
+    payload = job["payload"] or {}
+    building_list.run_snapshot(
+        str(payload["building_id"]), date.fromisoformat(str(payload["service_date"]))
+    )
+
+
+@handler("EXPORT_BUILD")
+def export_build(job: dict) -> None:
+    """园区受控导出（B）：把统计口径渲染成 CSV 落回 `export_jobs`，口径错误由服务落 FAILED。"""
+    from app.core.clock import build_clock
+    from app.modules.exports import service as exports
+
+    payload = job["payload"] or {}
+    exports.build(str(payload["export_id"]), build_clock().now())

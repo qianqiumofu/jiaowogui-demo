@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from app.core.clock import Clock
 from app.core.errors import ApiError
+from app.modules.directory import service as directory
 from app.modules.identity.adapters import mock_accounts
 from app.modules.identity.schemas import Person, Role, SessionContext
 
@@ -81,7 +82,7 @@ class SessionStore:
             display_name=person.display_name,
             roles=person.roles,
             active_role=record.active_role,
-            scope=resolve_scope(person, record.active_role),
+            scope=resolve_scope(person, record.active_role, self._clock.now()),
             expires_at=record.expires_at.isoformat(),
         )
 
@@ -121,19 +122,31 @@ class SessionStore:
         self._by_token.clear()
 
 
-def resolve_scope(person: Person, role: Role) -> dict[str, object]:
-    """数据范围解析。标注 pending 的项在 B 的目录模块落地后由适配器覆盖。"""
+def resolve_scope(person: Person, role: Role, at: datetime) -> dict[str, object]:
+    """数据范围解析。宿管与辅导员范围由 B 的目录与代班关系给出（详细路线图 M1）。
+
+    目录不可用时按空范围处理，由 authorization.authorize 判 403，绝不放开全量。
+    """
     if role is Role.STUDENT:
         return {"student_id": person.student_id, "resolved_by": "identity"}
     if role is Role.COUNSELOR:
         return {
             "counselor_user_id": person.user_id,
-            "student_ids": [],
-            "resolved_by": "pending:directory.get_counselors",
+            "student_ids": _scope_or_empty(directory.get_assigned_students, person.user_id, at),
+            "resolved_by": "directory",
         }
     if role is Role.DORM_MANAGER:
         return {
-            "building_ids": list(person.home_building_ids),
-            "resolved_by": "pending:duty_assignments",
+            "building_ids": _scope_or_empty(directory.get_duty_buildings, person.user_id, at),
+            "resolved_by": "duty_assignments",
         }
     return {"scope": "ALL_AUTHORIZED", "resolved_by": "campus_grant"}
+
+
+def _scope_or_empty(lookup, subject_id: str, at: datetime) -> list[str]:
+    from app.core.errors import ApiError
+
+    try:
+        return lookup(subject_id, at)
+    except ApiError:
+        return []

@@ -1,0 +1,11 @@
+{
+  "attempt_status": "SUCCEEDED",
+  "pass_id": "pass_synth_0001",
+  "duplicate": false,
+  "device_id": "dev_synth_a1_01",
+  "building_id": "bldg_a1",
+  "gate_id": "gate_a1_north",
+  "gate_name": "A1 北门",
+  "occurred_at": "2026-11-16T00:44:12+08:00",
+  "return_id": "ret_synth_0001"
+}

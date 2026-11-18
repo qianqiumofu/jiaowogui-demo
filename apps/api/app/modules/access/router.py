@@ -1,15 +1,27 @@
-"""通行与门禁模块占位（B 主责，M3 填充）：签码、撤销、核销、回执与对账。
+"""通行核销接口（B 主责）：终端按设备身份鉴权，不用学生会话。
 
-模拟终端使用设备身份而非学生会话；设备令牌校验在此模块实现。
+签码与撤销不开放 HTTP 入口：A 的核验链路直接调用 `access.service`，避免绕过核验领码。
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Header, Request
 
-from app.core.errors import not_implemented
+from app.core.errors import ApiError
+from app.modules.access import service
 
 router = APIRouter(prefix="/device", tags=["access"])
 
 
 @router.post("/scan")
-def scan(payload: dict) -> dict:
-    raise not_implemented("M3", "扫码核销与原子归返占用")
+def scan(
+    payload: dict,
+    request: Request,
+    device_id: str = Header(..., alias="x-device-id"),
+    device_token: str = Header(..., alias="x-device-token"),
+) -> dict:
+    """扫码核销：成功即在统一事务里落一条正式返宿记录，重复扫码返回同一条。"""
+    code = payload.get("code")
+    if not isinstance(code, str) or not code:
+        raise ApiError(
+            422, "VALIDATION_FAILED", "扫码内容缺少二维码。", {"missing": "code"}
+        )
+    return service.consume(device_id, device_token, code, request.app.state.clock.now())

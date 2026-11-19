@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "students": 1000,
+  "colleges": 5,
+  "classes": 40,
+  "buildings": 10,
+  "college_admins": 5,
+  "counselors": 20,
+  "ideology_teachers": 5,
+  "dorm_staff": 20,
+  "history_nights": 14,
+  "scenarios": ["RESCHEDULE", "CANCELLED", "FULFILLED", "CLOSED", "ACTIVE", "MANUAL_WITHOUT_RESERVATION", "UNCONFIRMED_QUERY_ONLY"]
+}

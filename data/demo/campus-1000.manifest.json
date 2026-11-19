@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "snapshot_file": "campus-1000.pgcustom",
+  "format": "PostgreSQL custom archive",
+  "size_bytes": 846368,
+  "sha256": "1a2f0d8956174e07ff2701baf07b75ffc7b77ec15a3f4fc81755e9e077e4231d",
+  "schema_revision": "0018",
+  "postgresql_version": "17.12 (Debian 17.12-1.pgdg13+1)",
+  "server_clock": {
+    "now": "2026-11-19T18:35:57.405506+08:00",
+    "service_date": "2026-11-19",
+    "night_window": [
+      "2026-11-20T00:00:00+08:00",
+      "2026-11-20T06:00:00+08:00"
+    ],
+    "latest_return_at": "2026-11-20T05:30:00+08:00",
+    "offset_minutes": 252
+  },
+  "excluded_table_data": [
+    "identity_sessions"
+  ],
+  "restored_and_verified": true,
+  "table_counts": {
+    "students": 1000,
+    "organizations": 14,
+    "buildings": 10,
+    "users": 1052,
+    "residences": 1000,
+    "counselor_assignments": 1200,
+    "duty_assignments": 881,
+    "reservations": 1779,
+    "reservation_revisions": 2939,
+    "pass_codes": 713,
+    "passage_attempts": 711,
+    "return_records": 1017,
+    "return_evidence": 1018,
+    "risk_events": 16,
+    "notifications": 4794,
+    "identity_sessions": 0
+  }
+}

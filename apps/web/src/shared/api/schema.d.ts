@@ -21,7 +21,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 账号列表 */
+                /** @description 合成体验账号列表；千人场景含各学院负责人、教师和宿管，学生保留代表账号，其余可输入合成登录名。 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3696,6 +3696,8 @@ export interface operations {
             query?: {
                 q?: string;
                 college_org_id?: string;
+                /** @description 可选基础身份筛选，先按现有授权范围收窄，再筛选；教师分配页使用 TEACHER。 */
+                identity_type?: "TEACHER" | "STUDENT" | "EMPLOYEE";
             };
             header?: never;
             path?: never;

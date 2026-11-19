@@ -8,11 +8,11 @@ const HOME_BY_ROLE: Record<Role, string> = {
   STUDENT: 'student-reservation',
   COUNSELOR: 'counselor-students',
   DORM_MANAGER: 'dorm-tonight',
-  CAMPUS: 'campus-query',
+  CAMPUS: 'leadership',
   TEACHER: 'profile',
   IDEOLOGY: 'counselor-students',
-  COLLEGE_ADMIN: 'counselor-students',
-  AUTH_ADMIN: 'permissions',
+  COLLEGE_ADMIN: 'leadership',
+  AUTH_ADMIN: 'leadership',
 }
 
 function homeTarget(): string {
@@ -27,6 +27,7 @@ const routes: RouteRecordRaw[] = [
     path: '/app',
     component: AppShell,
     children: [
+      { path: 'management', name: 'leadership', component: () => import('@/features/management/views/LeadershipView.vue'), meta: { roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN', 'CAMPUS'], label: '管理工作台' } },
       { path: '', name: 'home', redirect: () => ({ name: homeTarget() }) },
       {
         path: 'student/reservation',

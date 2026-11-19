@@ -56,14 +56,22 @@ def assert_existing_responsibilities(context,target,at):
             raise ApiError(403,'OUT_OF_SCOPE','该教师现有负责关系包含其他学院，请由校级部门调整。',{})
 
 
-@router.get("/users")
-def users(guard:Guard,q:str|None=None,college_org_id:str|None=None):
+def managed_rows(guard,q=None,college_org_id=None,identity_type=None):
     rows=school.users()
     if guard.active_role is Role.COLLEGE_ADMIN:
         own=set(guard.scope.get("college_org_ids") or [])
         rows=[r for r in rows if r["college_org_id"] in own and "TEACHER" in r["identity_types"]]
     if college_org_id:rows=[r for r in rows if r["college_org_id"]==college_org_id]
     if q:rows=[r for r in rows if q.casefold() in (r["display_name"]+r["school_id"]+r["login_name"]).casefold()]
+    if identity_type:rows=[r for r in rows if identity_type in r["identity_types"]]
+    return rows
+
+
+@router.get("/users")
+def users(guard:Guard,q:str|None=None,college_org_id:str|None=None,identity_type:str|None=None):
+    if identity_type is not None and identity_type not in ("TEACHER","STUDENT","EMPLOYEE"):
+        raise ApiError(422,"VALIDATION_FAILED","未知基础身份筛选。",{})
+    rows=managed_rows(guard,q,college_org_id,identity_type)
     for row in rows:
         p=school.person(user_id=row["user_id"])
         row["roles"]=[r.value for r in p.roles] if p else []
@@ -73,7 +81,7 @@ def users(guard:Guard,q:str|None=None,college_org_id:str|None=None):
 
 @router.get("/grants")
 def grants(guard:Guard,db:DB,request:Request):
-    allowed={u["user_id"] for u in users(guard)["items"]}
+    allowed={u["user_id"] for u in managed_rows(guard)}
     items=[]
     for row in db.scalars(select(RoleAssignment).where(RoleAssignment.user_id.in_(allowed)).order_by(RoleAssignment.id)):
         item=view(row)

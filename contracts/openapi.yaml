@@ -7,12 +7,13 @@ info:
 servers:
 - url: http://localhost:8000/api/v1
 paths:
+  # 千人体验仅增加合成账号样例；登录和授权字段兼容，列表仍为既有演示账号数组。
   /auth/demo-accounts:
     get:
       summary: 列出合成登录账号
       responses:
         '200':
-          description: 账号列表
+          description: 合成体验账号列表；千人场景含各学院负责人、教师和宿管，学生保留代表账号，其余可输入合成登录名。
           content:
             application/json:
               schema:
@@ -1407,6 +1408,12 @@ paths:
         in: query
         schema:
           type: string
+      - name: identity_type
+        in: query
+        description: 可选基础身份筛选，先按现有授权范围收窄，再筛选；教师分配页使用 TEACHER。
+        schema:
+          type: string
+          enum: [TEACHER, STUDENT, EMPLOYEE]
   /management/grants:
     get:
       summary: 职责与范围授予记录

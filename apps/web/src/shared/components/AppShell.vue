@@ -15,6 +15,7 @@ const currentLabel = computed(() => (route.meta.label as string | undefined) ?? 
 const scopeHint = computed(() => {
   const scope = (session.context?.scope ?? {}) as Scope
   if (scope.student_id) return `本人范围：${scope.student_id}`
+  if (session.activeRole === 'COLLEGE_ADMIN') return `获授学院 · ${scope.student_ids?.length ?? 0} 名学生`
   if (scope.building_ids?.length) return `值班楼栋：${scope.building_ids.join('、')}`
   if (scope.resolved_by?.startsWith('pending:')) return '范围待目录同步'
   if (scope.student_ids) return `负责学生：${scope.student_ids.length} 人`

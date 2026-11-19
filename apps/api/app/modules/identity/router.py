@@ -41,7 +41,7 @@ def demo_accounts() -> list[DemoAccount]:
     people=mock_accounts.PEOPLE
     if get_settings().database_url:
         from app.modules.identity.school import users,person
-        people=[person(user_id=r["user_id"]) for r in users() if r["login_name"] in {"student","counselor","campus","dorm","ideology","teacher","college_admin","auth_admin","part_time_counselor"}]
+        people=[person(user_id=r["user_id"]) for r in users() if r["login_name"] in {"student","counselor","campus","dorm","ideology","teacher","college_admin","auth_admin","part_time_counselor"} or (r["user_id"].startswith("usr_exp_") and "STUDENT" not in r["identity_types"])]
     return [DemoAccount(user_id=p.user_id,login_name=p.login_name,display_name=p.display_name,roles=p.roles,password=password,account_source=p.account_source,email=p.email) for p in people if p]
 
 

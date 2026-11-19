@@ -5,9 +5,11 @@ export interface NavItem {
   name: string
   label: string
   stage?: string
+  group?: string
 }
 
 const ITEMS: Array<NavItem & { roles: Role[]; action?: string }> = [
+  { to: '/app/management', name: 'leadership', label: '管理工作台', roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN', 'CAMPUS'] },
   { to: '/app/student/reservation', name: 'student-reservation', label: '晚归预约', roles: ['STUDENT'], action: 'reservation:create', stage: 'M2' },
   { to: '/app/student/records', name: 'student-records', label: '我的记录', roles: ['STUDENT'], stage: 'M2' },
   { to: '/app/counselor/students', name: 'counselor-students', label: '负责学生', roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN'], stage: 'M1' },
@@ -32,5 +34,7 @@ export function navigationFor(role: Role | null, allowed: string[]): NavItem[] {
   if (!role) return []
   return ITEMS.filter(
     (item) => item.roles.includes(role) && (!item.action || allowed.includes(item.action)),
-  ).map(({ to, name, label, stage }) => ({ to, name, label, stage }))
+  ).map(({ to, name, label }) => ({ to, name, label: role === 'COLLEGE_ADMIN' && name === 'counselor-students' ? '学院学生名册' : role === 'CAMPUS' && name === 'shared-risk' ? '风险主动查询' : label,
+    group: name === 'leadership' ? '工作台' : ['permissions', 'campus-staff-accounts', 'duties', 'risk-policy'].includes(name) ? '人员与配置' : ['profile', 'guide', 'settings', 'campus-notifications'].includes(name) ? '帮助与演示' : '业务查看',
+  })).sort((a,b) => ['工作台','业务查看','人员与配置','帮助与演示'].indexOf(a.group) - ['工作台','业务查看','人员与配置','帮助与演示'].indexOf(b.group))
 }

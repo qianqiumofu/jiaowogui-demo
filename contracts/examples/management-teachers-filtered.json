@@ -1,0 +1,10 @@
+{
+  "items": [{
+    "user_id": "usr_exp_c1_0", "school_id": "SYN-counselor_2_1",
+    "login_name": "counselor_2_1", "display_name": "合成数学学院辅导员1",
+    "identity_types": ["TEACHER"], "college_org_id": "org_college_math",
+    "position_title": "兼任辅导员", "source": "UNIFIED_SCHOOL",
+    "roles": ["COUNSELOR"], "student_id": null
+  }],
+  "next_cursor": null
+}

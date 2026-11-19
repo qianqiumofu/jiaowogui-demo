@@ -11,6 +11,12 @@ from app.modules.identity.schemas import SessionContext
 router = APIRouter(prefix="/exports", tags=["exports"])
 
 GuardedDep = Annotated[SessionContext, Depends(require("export:create"))]
+DeleteDep = Annotated[SessionContext, Depends(require("export:delete"))]
+
+
+@router.delete('/{export_id}')
+def delete_export(export_id: str, guarded: DeleteDep, request: Request) -> dict:
+    return service.delete(guarded, export_id, request.app.state.clock.now())
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

@@ -1,0 +1,13 @@
+{
+  "period": "DAY",
+  "current_service_date": "2026-11-19",
+  "date_from": "2026-11-18",
+  "date_to": "2026-11-18",
+  "generated_at": "2026-11-19T12:00:00+08:00",
+  "yesterday_returned_people": 2,
+  "today_reserved_people": 3,
+  "returned_people": 2,
+  "returned_nights": 2,
+  "repeated_people": 0,
+  "repeat_min_nights": 2
+}

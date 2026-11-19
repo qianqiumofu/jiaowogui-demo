@@ -191,6 +191,7 @@ def _student_row(index: int) -> tuple[Student, str, str]:
         user_id="usr_synth_0001" if index == 0 else ("usr_synth_0002" if index == 8 else None),
         display_name=name,
         college_org_id=COLLEGES[index % len(COLLEGES)][0],
+        education_level=("BACHELOR", "MASTER", "DOCTORAL")[index % 3],
         grade=grade,
         gender=gender,
         phone=f"1380000{number:04d}",

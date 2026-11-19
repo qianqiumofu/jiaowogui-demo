@@ -395,3 +395,51 @@ def test_missing_risk_recipients_is_audited_without_fallback_to_campus(client,cl
         assert row.recipients==[]
         assert db.scalar(select(AuditLog).where(AuditLog.action=='RISK_RECIPIENT_MISSING')) is not None
         assert list(db.scalars(select(BackgroundJob)))==[]
+
+
+@pytest.mark.parametrize("role", ["COUNSELOR", "IDEOLOGY", "CAMPUS"])
+def test_school_cannot_manage_college_teacher_roles(client, clock, role):
+    root = auth(token_for(client, "auth_admin"))
+    response = client.post(f"{API}/management/grants", headers=root, json={
+        "user_id": "usr_synth_0006", "role": role, "student_ids": []})
+    assert response.status_code == 403
+    with get_engine().connect() as conn:
+        grant_id = conn.execute(text("SELECT id FROM role_assignments WHERE role=:role AND active LIMIT 1"), {"role": role}).scalar_one()
+    response = client.delete(f"{API}/management/grants/{grant_id}", headers=root)
+    assert response.status_code == 403
+    with get_engine().connect() as conn:
+        assert conn.execute(text("SELECT active FROM role_assignments WHERE id=:id"), {"id": grant_id}).scalar_one() is True
+
+
+def test_school_lists_only_deans_and_can_choose_any_school_teacher(client, clock):
+    root = auth(token_for(client, "auth_admin"))
+    teachers = client.get(f"{API}/management/users?identity_type=TEACHER", headers=root).json()["items"]
+    with get_engine().connect() as conn:
+        expected = set(conn.execute(text("SELECT user_id FROM users WHERE identity_types ? 'TEACHER' AND status='ACTIVE'")).scalars())
+    assert {u["user_id"] for u in teachers} == expected
+    colleges = sorted(directory.all_college_ids())
+    target = next(u for u in teachers if u["college_org_id"] != colleges[-1])
+    payload = {"user_id": target["user_id"], "role": "COLLEGE_ADMIN", "college_org_ids": [colleges[-1]]}
+    response = client.post(f"{API}/management/grants", headers=root, json={**payload, "student_ids": ["stu_synth_0001"]})
+    assert response.status_code == 403
+    response = client.post(f"{API}/management/grants", headers=root, json=payload)
+    assert response.status_code == 201, response.text
+    root = auth(token_for(client, "auth_admin"))
+    grants = client.get(f"{API}/management/grants", headers=root).json()["items"]
+    assert grants and {g["role"] for g in grants} == {"COLLEGE_ADMIN"}
+    assert client.delete(f"{API}/management/grants/{response.json()['id']}", headers=root).status_code == 200
+
+
+def test_school_can_read_all_school_reports_but_has_no_business_write_permissions(client, clock):
+    root = auth(token_for(client, "auth_admin"))
+    me = client.get(f"{API}/me", headers=root).json()
+    with get_engine().connect() as conn:
+        expected = set(conn.execute(text("SELECT student_id FROM students")).scalars())
+    assert set(me["scope"]["student_ids"]) == expected
+    for path in ("/reports/daily", "/reports/weekly"):
+        response = client.get(f"{API}{path}", headers=root)
+        assert response.status_code == 200, response.text
+        assert response.json()["scope_note"] == "统计全校授权范围内的学生。"
+    for path in ("/reports/subscriptions", "/risk-events", "/staff-accounts"):
+        assert client.get(f"{API}{path}", headers=root).status_code == 403
+    assert client.post(f"{API}/reservations", headers=root, json={"planned_return_at": PLAN.isoformat(), "reason": "合成测试"}).status_code == 403

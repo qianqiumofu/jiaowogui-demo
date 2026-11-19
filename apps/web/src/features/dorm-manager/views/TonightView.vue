@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 
 import { ApiRequestError, api } from '@/shared/api/client'
 import type { BuildingTonight, StudentContact, TonightItem } from '@/shared/api/types'
@@ -7,10 +7,14 @@ import { describeError, useSessionStore } from '@/shared/stores/session'
 
 const session = useSessionStore()
 
-const state = ref<'loading' | 'ready' | 'pending' | 'denied' | 'error'>('loading')
+const state = ref<'idle' | 'loading' | 'ready' | 'pending' | 'denied' | 'error'>('idle')
 const notice = ref('')
 const data = ref<BuildingTonight | null>(null)
 const activeBuilding = ref('')
+let sequence = 0
+function invalidate() { sequence++; data.value = null; contacts.value = {}; contactErrors.value = {}; state.value = 'idle'; notice.value = '' }
+watch(activeBuilding, invalidate, { flush: 'sync' })
+onBeforeUnmount(invalidate)
 const contacts = ref<Record<string, StudentContact>>({})
 const contactErrors = ref<Record<string, string>>({})
 
@@ -26,6 +30,8 @@ const FLAG_LABEL: Record<string, string> = {
 }
 
 async function load() {
+  const requestSequence = ++sequence
+  data.value = null
   if (!activeBuilding.value) {
     state.value = 'denied'
     notice.value = '当前没有生效的值班或代班楼栋。'
@@ -36,9 +42,12 @@ async function load() {
   contacts.value = {}
   contactErrors.value = {}
   try {
-    data.value = await api.buildingTonight(activeBuilding.value)
+    const response = await api.buildingTonight(activeBuilding.value)
+    if (requestSequence !== sequence) return
+    data.value = response
     state.value = 'ready'
   } catch (cause) {
+    if (requestSequence !== sequence) return
     data.value = null
     if (cause instanceof ApiRequestError) {
       if (cause.code === 'NOT_IMPLEMENTED') state.value = 'pending'
@@ -73,7 +82,6 @@ watch(buildings, (list) => {
 
 onMounted(() => {
   activeBuilding.value = buildings.value[0] ?? ''
-  load()
 })
 </script>
 
@@ -82,7 +90,7 @@ onMounted(() => {
     <section class="panel">
       <header class="panel__head">
         <h2>今晚名单</h2>
-        <button class="panel__reload" type="button" @click="load">重新读取</button>
+        <button class="panel__reload" type="button" @click="load" :disabled="state === 'loading'">查询</button>
       </header>
 
       <nav v-if="buildings.length > 1" class="tonight__tabs">
@@ -92,7 +100,7 @@ onMounted(() => {
           class="tonight__tab"
           :class="{ 'tonight__tab--active': building === activeBuilding }"
           type="button"
-          @click="activeBuilding = building; load()"
+          @click="activeBuilding = building"
         >
           {{ building }}
         </button>
@@ -118,6 +126,7 @@ onMounted(() => {
         <p class="panel__placeholderTitle">读取失败</p>
         <p class="panel__placeholderNote">{{ notice }}</p>
       </div>
+      <p v-else-if="state === 'idle'" class="panel__line">尚未查询，请选择值班楼栋后点击“查询”。</p>
       <div v-else-if="!items.length" class="panel__placeholder">
         <p class="panel__placeholderTitle">今晚本楼栋没有晚归预约。</p>
         <p class="panel__placeholderNote">接口按契约返回空列表。</p>

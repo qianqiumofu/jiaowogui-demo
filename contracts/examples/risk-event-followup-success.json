@@ -21,10 +21,27 @@
       "updated_at": "2026-11-16T10:00:00+08:00",
       "actions": [
         {
-          "id": "ract_synth_001",
+          "id": "ract_synth_ack",
           "actor_user_id": "usr_synth_0002",
+          "actor_display_name": "合成辅导员",
+          "action": "ACK",
+          "note": "已接手，准备联系核实。",
+          "created_at": "2026-11-16T09:35:00+08:00"
+        },
+        {
+          "id": "ract_synth_followup",
+          "actor_user_id": "usr_synth_0002",
+          "actor_display_name": "合成辅导员",
+          "action": "FOLLOW_UP",
+          "note": "已联系学生，核实合成情况。",
+          "created_at": "2026-11-16T09:45:00+08:00"
+        },
+        {
+          "id": "ract_synth_resolve",
+          "actor_user_id": "usr_synth_0002",
+          "actor_display_name": "合成辅导员",
           "action": "RESOLVE",
-          "note": "合成情况已核实",
+          "note": "合成情况已核实，完成跟进并办结。",
           "created_at": "2026-11-16T10:00:00+08:00"
         }
       ]

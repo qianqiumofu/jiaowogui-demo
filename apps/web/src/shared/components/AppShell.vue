@@ -17,10 +17,11 @@ const scopeHint = computed(() => {
   if (scope.student_id) return `本人范围：${scope.student_id}`
   if (session.activeRole === 'COLLEGE_ADMIN') return `获授学院 · ${scope.student_ids?.length ?? 0} 名学生`
   if (scope.building_ids?.length) return `值班楼栋：${scope.building_ids.join('、')}`
+  if (session.activeRole === 'DORM_MANAGER') return '当前没有已授权的值班楼栋'
   if (scope.resolved_by?.startsWith('pending:')) return '范围待目录同步'
+  if (session.activeRole === 'AUTH_ADMIN') return '学院负责人任免 · 全校晚归只读'
   if (scope.student_ids) return `负责学生：${scope.student_ids.length} 人`
   if (session.activeRole === 'TEACHER') return '本人身份信息'
-  if (session.activeRole === 'AUTH_ADMIN') return '全校权限配置范围'
   return '全校授权范围'
 })
 </script>

@@ -233,7 +233,9 @@ def resolve_scope(person: Person, role: Role, at: datetime) -> dict[str, object]
         from app.modules.authorization.roles import scope_for
         colleges=scope_for(person.user_id,role.value).get("college_org_ids",[])
         return {"college_org_ids":colleges,"student_ids":directory.students_in_colleges(colleges),"resolved_by":"college_grant"}
-    if role is Role.AUTH_ADMIN:return {"scope":"SCHOOL_PERMISSION_ADMIN","resolved_by":"role_grant"}
+    if role is Role.AUTH_ADMIN:
+        colleges=sorted(directory.all_college_ids())
+        return {"scope":"SCHOOL_PERMISSION_ADMIN","student_ids":directory.students_in_colleges(colleges),"resolved_by":"school_directory"}
     if role is Role.TEACHER:return {"user_id":person.user_id,"resolved_by":"school_identity"}
     return {"scope": "ALL_AUTHORIZED", "resolved_by": "campus_grant"}
 

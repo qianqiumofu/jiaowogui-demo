@@ -23,6 +23,7 @@ CreateDep = Annotated[SessionContext, Depends(require("staff_account:create"))]
 UpdateDep = Annotated[SessionContext, Depends(require("staff_account:update"))]
 ResetDep = Annotated[SessionContext, Depends(require("staff_account:reset"))]
 DisableDep = Annotated[SessionContext, Depends(require("staff_account:disable"))]
+EnableDep = Annotated[SessionContext, Depends(require("staff_account:enable"))]
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
@@ -91,4 +92,12 @@ def disable_staff_account(
 ) -> dict:
     account = staff_accounts.disable(db, request.app.state.clock, staff_account_id)
     _store(request).drop_user(account.user_id)
+    return _account(account)
+
+
+@router.post("/{staff_account_id}/enable")
+def enable_staff_account(
+    staff_account_id: str, guarded: EnableDep, db: SessionDep
+) -> dict:
+    account = staff_accounts.enable(db, staff_account_id)
     return _account(account)

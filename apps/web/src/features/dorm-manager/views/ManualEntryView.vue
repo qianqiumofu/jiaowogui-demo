@@ -17,6 +17,7 @@ const residents = ref<BuildingResident[]>([])
 
 const selected = ref<BuildingResident | null>(null)
 const note = ref('按门铃后手动开门')
+const occurredAt = ref('')
 const submitting = ref(false)
 const result = ref<ReturnRecord | null>(null)
 const failure = ref('')
@@ -75,7 +76,8 @@ async function submit() {
       student_id: selected.value.student_id,
       building_id: activeBuilding.value,
       evidence: { note: note.value.trim() || '按门铃后手动开门' },
-      idempotency_key: idempotencyKey || undefined,
+      occurred_at: occurredAt.value ? `${occurredAt.value}:00+08:00` : undefined,
+      idempotency_key: occurredAt.value ? `${idempotencyKey}:${occurredAt.value}` : idempotencyKey || undefined,
     })
     await search()
   } catch (cause) {
@@ -187,6 +189,11 @@ onMounted(async () => {
         <dd>{{ selected.grade || '—' }}</dd>
       </dl>
 
+      <label class="manual__field">
+        <span>实际返宿时间（北京时间）</span>
+        <input v-model="occurredAt" type="datetime-local" />
+        <small>留空记录当前服务端时间；仅接受零点至六点前的实际返宿，可在白天补填昨夜时间，业务夜由服务端判断。</small>
+      </label>
       <label class="manual__field">
         <span>补录备注</span>
         <input v-model="note" placeholder="如：按门铃后手动开门" />

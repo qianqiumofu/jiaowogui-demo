@@ -1,4 +1,4 @@
-param([switch]$ResetData)
+﻿param([switch]$ResetData)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot

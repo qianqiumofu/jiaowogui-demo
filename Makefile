@@ -23,7 +23,7 @@ api-install:
 	$(API_PY) -m pip install -r apps/api/requirements.lock.txt
 
 api-run:
-	$(API_PY) -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
+	$(API_PY) -m uvicorn app.main:app --app-dir apps/api --reload --port 8001
 
 api-test:
 	$(API_PY) -m pytest apps/api/tests

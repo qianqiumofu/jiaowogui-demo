@@ -6,6 +6,7 @@ from app.api.demo import router as demo_router
 from app.modules.access.router import router as access_router
 from app.modules.authorization.router import router as authorization_router
 from app.modules.building_list.router import router as building_list_router
+from app.modules.building_list.router import campus_router as campus_night_router
 from app.modules.directory.router import router as directory_router
 from app.modules.duty.router import router as duty_router
 from app.modules.exports.router import router as exports_router
@@ -33,6 +34,7 @@ api_router.include_router(demo_router)
 # --- B：目录、代班、楼栋名单、通行、返宿记录、统计、导出 ---
 api_router.include_router(access_router)
 api_router.include_router(building_list_router)
+api_router.include_router(campus_night_router)
 api_router.include_router(directory_router)
 api_router.include_router(returns_router)
 api_router.include_router(duty_router)

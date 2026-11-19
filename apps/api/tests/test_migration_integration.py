@@ -34,7 +34,8 @@ def test_migration_preserves_legacy_a_accounts_and_roundtrips(postgres_schema, o
                         '["bldg_a1"]', 'ACTIVE', :at, :at)
             """), {"at": created, "id": "usr_staff_" + "x" * 24, "login": "x" * 64, "name": "合" * 80})
         command.upgrade(cfg, "head")
-        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0018"
+        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0021"
+        assert conn.execute(text("SELECT data_type FROM information_schema.columns WHERE table_schema=:schema AND table_name='export_jobs' AND column_name='scope_student_ids'"), {"schema": schema}).scalar() == "jsonb"
         assert conn.execute(text("SELECT to_regclass('local_staff_accounts')")).scalar() is None
         if old_a_database:
             row = conn.execute(text("SELECT * FROM users WHERE source='STAFF_LOCAL'")).mappings().one()
@@ -46,5 +47,27 @@ def test_migration_preserves_legacy_a_accounts_and_roundtrips(postgres_schema, o
             assert conn.execute(text("SELECT count(*) FROM users WHERE user_id LIKE 'usr_staff_%'")).scalar() == 0
             command.upgrade(cfg, "head")
             assert conn.execute(text("SELECT count(*) FROM users WHERE source='STAFF_LOCAL'")).scalar() == 1
+        conn.execute(text('SET LOCAL search_path TO public'))
+        conn.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+
+
+def test_education_migration_preserves_unknown_old_directory(postgres_schema):
+    api = Path(__file__).resolve().parents[1]
+    cfg = Config(str(api / 'alembic.ini'))
+    cfg.set_main_option('script_location',str(api / 'alembic'))
+    schema = 'jwg_migration_test_' + uuid4().hex
+    with get_engine().begin() as conn:
+        conn.execute(text(f'CREATE SCHEMA "{schema}"'))
+        conn.execute(text(f'SET LOCAL search_path TO "{schema}"'))
+        cfg.attributes['connection'] = conn
+        command.upgrade(cfg,'0018')
+        conn.execute(text("INSERT INTO organizations(org_id,org_type,name) VALUES('synth_c','COLLEGE','合成学院')"))
+        conn.execute(text("INSERT INTO students(student_id,school_id,display_name,college_org_id,grade,gender,phone) VALUES('synth_old','SYNTH_OLD','合成旧学生','synth_c','2023','MALE','SYNTH_PHONE')"))
+        command.upgrade(cfg,'head')
+        row = conn.execute(text("SELECT education_level,grade FROM students WHERE student_id='synth_old'")).one()
+        assert row.education_level is None and row.grade == '2023'
+        command.downgrade(cfg,'0018')
+        assert conn.execute(text("SELECT count(*) FROM students WHERE student_id='synth_old'")).scalar() == 1
+        command.upgrade(cfg,'head')
         conn.execute(text('SET LOCAL search_path TO public'))
         conn.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))

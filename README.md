@@ -51,21 +51,16 @@ Docker Compose 与依赖锁定、前端接口类型由契约生成、**学生端
 
 ## 三十秒跑起来
 
-```bash
+```powershell
 # 0) 先启动 Docker Desktop，等它就绪
 cd "F:/A_homework/交我归"
 docker compose up -d postgres
 
-# 1) 后端
-cd apps/api
-./.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
-
-# 2) 前端（另开一个终端）
-cd apps/web
-npm run dev
+# 1) 启动唯一演示环境（数据库已恢复时直接运行，不重置数据）
+powershell -ExecutionPolicy Bypass -File scripts/start-campus-experience.ps1
 ```
 
-打开 <http://localhost:5173>，点任意合成账号进入；后端接口文档在 <http://localhost:8000/docs>。
+统一打开 <http://127.0.0.1:5174>，后端接口文档在 <http://127.0.0.1:8001/docs>。演示库固定 `jwg_campus_experience`；旧 5173/8000 环境已停用，旧库仅保留历史数据，不作为第二套运行环境。首次需先按 [数据库恢复与体验](data/demo/README.md) 准备千人库；不要对已有数据使用重置参数。
 首次准备（装依赖、建虚拟环境、复制 `.env`）见 [docs/01-运行手册.md](docs/01-运行手册.md)。
 
 ## 边界

@@ -1,0 +1,20 @@
+{
+  "request": {
+    "education_level": "MASTER",
+    "date_from": "2026-11-01",
+    "date_to": "2026-11-14",
+    "group_by": "park"
+  },
+  "zero_group": {
+    "value": "campus_park_west1",
+    "label": "西一区",
+    "people": 0,
+    "nights": 0,
+    "returns": 0,
+    "qr_returns": 0,
+    "manual_returns": 0,
+    "enrolled": 6,
+    "reservations": 0,
+    "unconfirmed": 0
+  }
+}

@@ -7,13 +7,13 @@ const session = useSessionStore()
 const students = ref<StudentDirectoryItem[]>([]), error = ref(''), loaded = ref(false)
 const school = computed(() => session.activeRole === 'AUTH_ADMIN')
 const campus = computed(() => session.activeRole === 'CAMPUS')
-const title = computed(() => school.value ? '校级授权工作台' : campus.value ? '园区运营工作台' : '学院管理工作台')
+const title = computed(() => school.value ? '校级管理工作台' : campus.value ? '园区运营工作台' : '学院管理工作台')
 const collegeCount = computed(() => new Set(students.value.map(s => s.college_org_id)).size)
 const classCount = computed(() => new Set(students.value.map(s => `${s.college_org_id}/${s.class_name}`)).size)
 const buildingCount = computed(() => new Set(students.value.map(s => s.building_id).filter(Boolean)).size)
 const steps = computed(() => school.value ? [
-  { title: '1. 指定学院负责人', text: '选择教师，授予学院管理职责并明确管理学院。', to: '/app/management/permissions', label: '配置学院负责人' },
-  { title: '2. 分配负责教师', text: '按学院、专业、年级或班级分配辅导员和思政教师。学院负责人也可完成本院分配。', to: '/app/management/permissions', label: '管理职责与负责范围' },
+  { title: '1. 指定学院负责人', text: '选择教师，授予学院管理职责并明确管理学院。', to: '/app/management/permissions', label: '查看与任命学院负责人' },
+  { title: '2. 查看全校晚归情况', text: '查看日、周、月人数统计；按学院、年级、宿舍区与楼栋主动查询晚归和预约名单。', to: '/app/management/statistics', label: '查看晚归情况' },
 ] : campus.value ? [
   { title: '1. 查看全校晚归情况', text: '按学院、楼栋和业务夜比较实际返宿事实，查看聚合统计并导出。', to: '/app/campus/query', label: '打开统计与查询' },
   { title: '2. 管理宿管与排班', text: '先注册宿管工作账号、绑定固定楼栋，再安排日常值班或临时代班。', to: '/app/campus/staff-accounts', label: '管理宿管账号' },
@@ -33,5 +33,5 @@ onMounted(async () => { try { students.value = (await api.directoryStudents()).i
     <div v-if="loaded" class="leadership-metrics"><div><strong>{{ students.length }}</strong><span>授权范围学生</span></div><div><strong>{{ collegeCount }}</strong><span>学院</span></div><div><strong>{{ classCount }}</strong><span>班级</span></div><div><strong>{{ buildingCount }}</strong><span>住宿楼栋</span></div></div>
   </section>
   <section class="leadership-cards" aria-label="管理工作流程"><article v-for="step in steps" :key="step.title" class="panel"><h2>{{ step.title }}</h2><p>{{ step.text }}</p><RouterLink :to="step.to">{{ step.label }} →</RouterLink></article></section>
-  <section class="panel"><h2>职责分工</h2><p>校级部门管理学院负责人和工作职责；学院负责人管理本院教师及负责学生；园区负责全校查询、宿管账号和值班。辅导员与专职思政教师只查看明确分配的学生。</p><p>未确认返宿仅是查询状态，不代表已证明未归，不产生超时提醒。预约均自动通过。</p></section>
+  <section class="panel"><h2>职责分工</h2><p>校级领导任免学院负责人并查看全校晚归情况；学院负责人决定本院思政、辅导员及负责班级与学生；园区负责全校查询、宿管账号和值班。辅导员与专职思政教师只查看明确分配的学生。</p><p>未确认返宿仅是查询状态，不代表已证明未归，不产生超时提醒。预约均自动通过。</p></section>
 </div></template>

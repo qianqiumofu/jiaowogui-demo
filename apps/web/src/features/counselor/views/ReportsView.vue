@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 
 import { RETURN_STATE_TEXT } from '@/features/counselor/labels'
 import { ApiRequestError, api } from '@/shared/api/client'
@@ -14,10 +14,15 @@ type Kind = 'daily' | 'weekly'
 const kind = ref<Kind>('daily')
 const daily = ref<DailyReport | null>(null)
 const weekly = ref<WeeklyReport | null>(null)
-// 空字符串＝让服务端自己决定看哪一晚；读回来后把服务端的判定回填到控件，前端不推算业务日。
+// 留空时由服务端决定前一业务夜；切换查询条件只清空结果，不自动加载。
 const picked = ref('')
 const latest = ref('')
-const loading = ref(true)
+const loading = ref(false)
+const queried = ref(false)
+let sequence = 0
+function invalidate() { sequence++; daily.value = null; weekly.value = null; queried.value = false; loading.value = false; failure.value = '' }
+watch([kind, picked], invalidate, { flush: 'sync' })
+onBeforeUnmount(invalidate)
 const failure = ref('')
 
 const chips = computed(() => {
@@ -43,36 +48,41 @@ function timeText(value: string): string {
 }
 
 async function load() {
+  const requestSequence = ++sequence
+  const requestedKind = kind.value
   loading.value = true
   failure.value = ''
+  queried.value = false
+  daily.value = null; weekly.value = null
   const date = picked.value || undefined
   try {
-    if (kind.value === 'daily') {
+    if (requestedKind === 'daily') {
       const body = await api.dailyReport(date)
+      if (requestSequence !== sequence) return
       daily.value = body
-      picked.value = body.service_date
     } else {
       const body = await api.weeklyReport(date)
+      if (requestSequence !== sequence) return
       weekly.value = body
-      picked.value = body.service_date
     }
+    queried.value = true
   } catch (cause) {
+    if (requestSequence !== sequence) return
     failure.value =
       cause instanceof ApiRequestError ? `${cause.code}：${cause.message}` : '报告读取失败。'
   } finally {
-    loading.value = false
+    if (requestSequence === sequence) loading.value = false
   }
 }
 
 async function switchTo(next: Kind) {
   if (kind.value === next) return
   kind.value = next
-  await load()
 }
 
 async function backToLastFinishedNight() {
   picked.value = ''
-  await load()
+  invalidate()
 }
 
 onMounted(async () => {
@@ -82,7 +92,6 @@ onMounted(async () => {
     // 时钟读不到只影响日期控件的上界，服务端仍然会拒绝越界的查询。
   }
   if(session.can('report:subscribe')) { try { subscription.value=await api.subscription() } catch(e) { subMessage.value=describeError(e) } }
-  await load()
 })
 </script>
 
@@ -91,7 +100,7 @@ onMounted(async () => {
     <section class="panel">
       <header class="panel__head">
         <h2>{{ kind === 'daily' ? '前一晚日报' : '最近一周周报' }}</h2>
-        <button class="panel__reload" type="button" :disabled="loading" @click="load">重新读取</button>
+        <button class="panel__reload" type="button" :disabled="loading" @click="load">查询</button>
       </header>
 
       <div class="rep__tools">
@@ -115,7 +124,7 @@ onMounted(async () => {
         </div>
         <label class="rep__date">
           <span>业务日</span>
-          <input v-model="picked" type="date" :max="latest || undefined" @change="load" />
+          <input v-model="picked" type="date" :max="latest || undefined"  />
         </label>
         <button class="rep__reset" type="button" @click="backToLastFinishedNight">回到前一晚</button>
       </div>
@@ -123,6 +132,7 @@ onMounted(async () => {
       <p v-if="loading" class="panel__line">读取中……</p>
       <p v-else-if="failure" class="resv__notice resv__notice--bad">{{ failure }}</p>
 
+      <p v-else-if="!queried" class="panel__line">尚未查询。选择业务日与日报或周报后点击“查询”；留空默认查看前一晚。</p>
       <template v-else>
         <p class="panel__line">{{ (kind === 'daily' ? daily : weekly)?.scope_note }}</p>
 

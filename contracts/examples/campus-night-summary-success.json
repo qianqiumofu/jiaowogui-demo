@@ -1,0 +1,25 @@
+{
+  "service_date": "2026-11-18",
+  "summary_due_at": "2026-11-19T00:00:00+08:00",
+  "items": [
+    {
+      "building_id": "bldg_a1",
+      "building_name": "A1号楼",
+      "park_org_id": "campus_park_east1",
+      "park_name": "东一区",
+      "summary_status": "SUMMARIZED",
+      "summary_generated_at": "2026-11-19T00:00:00+08:00",
+      "headcount": 8,
+      "returned_count": 6,
+      "responsible_source": "SNAPSHOT",
+      "responsible": [
+        {
+          "user_id": "usr_synth_0003",
+          "display_name": "合成宿管",
+          "kind": "FIXED"
+        }
+      ]
+    }
+  ],
+  "next_cursor": null
+}

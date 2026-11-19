@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 API_ROOT = Path(__file__).resolve().parents[2]
 
@@ -32,6 +33,8 @@ class Settings(BaseSettings):
     weekly_report_at: str = "09:00"
     weekly_report_weekday: int = 0
     weekly_report_nights: int = 7
+    # 校级周/月多次晚归展示阈值，仅查询分组，不触发风险或通知（Demo 默认）。
+    report_repeat_min_nights: int = Field(default=2, ge=2)
     risk_window_nights: int = 7
     risk_times_threshold: int = 3
     risk_consecutive_threshold: int = 3

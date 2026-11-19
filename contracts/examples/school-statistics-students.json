@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "student_id": "stu_synth_0001",
+      "school_id": "2023S0001",
+      "display_name": "合成学生0001",
+      "college_org_id": "org_college_cs",
+      "college_name": "合成计算机学院",
+      "grade": "2023",
+      "building_id": "bldg_a1",
+      "building_name": "A1",
+      "park_org_id": "org_park_w1",
+      "park_name": "西一",
+      "return_nights": 2,
+      "service_dates": [
+        "2026-11-17",
+        "2026-11-18"
+      ]
+    }
+  ],
+  "next_cursor": null,
+  "total_matches": 1
+}

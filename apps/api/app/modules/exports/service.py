@@ -34,6 +34,7 @@ _PARAM_KEYS = (
     "park_org_id",
     "building_id",
     "grade",
+    "education_level",
     "gender",
     "return_source",
     "group_by",
@@ -44,6 +45,7 @@ _FILTER_DIMENSIONS = {
     "park_org_id": "park",
     "building_id": "building",
     "grade": "grade",
+    "education_level": "education_level",
     "gender": "gender",
     "return_source": "return_source",
 }
@@ -69,8 +71,8 @@ _ATTRIBUTION_LABELS = {"snapshot": "发生时快照", "current": "当前在册"}
 
 _INSERT_EXPORT_SQL = text(
     """
-    INSERT INTO export_jobs (export_id, report, requested_by, params, status, idempotency_key)
-    VALUES (:export_id, :report, :requested_by, CAST(:params AS JSONB), 'PENDING', :idempotency_key)
+    INSERT INTO export_jobs (export_id, report, requested_by, params, scope_student_ids, status, idempotency_key)
+    VALUES (:export_id, :report, :requested_by, CAST(:params AS JSONB), CAST(:scope_student_ids AS JSONB), 'PENDING', :idempotency_key)
     ON CONFLICT (idempotency_key) DO NOTHING
     RETURNING export_id
     """
@@ -79,19 +81,19 @@ _INSERT_EXPORT_SQL = text(
 
 _LOAD_SQL = text(
     """
-    SELECT export_id, report, requested_by, params, status, file_name, csv_content, row_count,
-           error, idempotency_key, created_at, updated_at, done_at, expires_at
+    SELECT export_id, report, requested_by, params, scope_student_ids, status, file_name, csv_content, row_count,
+           error, idempotency_key, created_at, updated_at, done_at, expires_at, deleted_at
     FROM export_jobs
-    WHERE export_id = :export_id
+    WHERE export_id = :export_id AND deleted_at IS NULL
     """
 )
 
 _LIST_SQL = text(
     """
-    SELECT export_id, report, requested_by, params, status, file_name, csv_content, row_count,
+    SELECT export_id, report, requested_by, params, scope_student_ids, status, file_name, csv_content, row_count,
            error, idempotency_key, created_at, updated_at, done_at, expires_at
     FROM export_jobs
-    WHERE requested_by = :requested_by
+    WHERE requested_by = :requested_by AND deleted_at IS NULL
     ORDER BY created_at DESC, export_id DESC
     """
 )
@@ -161,6 +163,7 @@ def _check(params: dict) -> tuple[date, date]:
             params.get("return_source"),
             params["group_by"],
             params["attribution"],
+            params.get("education_level"),
         )
     except ApiError as exc:
         # 创建时就拒绝口径错误，别让任务排队到 worker 里才失败。
@@ -174,9 +177,21 @@ def create(context: SessionContext, payload: dict, now: datetime) -> dict:
         raise _validation("report 目前只支持 STATISTICS（统计口径受控导出）。", value=report)
     params = normalize_params(payload)
     _check(params)
+    # 范围在创建时固化：worker 没有会话上下文，之后负责关系变更也不影响这次导出的口径。
+    # 园区为 None（不裁剪，存 SQL NULL）；范围内角色存本人负责学生集合的快照。
+    allowed = statistics.allowed_students(context)
+    scope_snapshot = None if allowed is None else sorted(allowed)
     idempotency_key = payload.get("idempotency_key")
-    if idempotency_key is not None and not isinstance(idempotency_key, str):
-        raise _validation("idempotency_key 必须是字符串。")
+    if idempotency_key is not None and (
+        not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 128
+    ):
+        raise _validation("idempotency_key 必须是 1 至 128 字符的非空字符串。")
+
+    def replay(conn, export_id):
+        existing = _require(conn, context, str(export_id), now)
+        if existing["params"] != params or existing["scope_student_ids"] != scope_snapshot:
+            raise _api_error(409, "IDEMPOTENCY_CONFLICT", "该幂等键已用于其他参数或数据范围，请使用新键。")
+        return _resource(existing)
 
     with get_engine().begin() as conn:
         if idempotency_key:
@@ -185,7 +200,7 @@ def create(context: SessionContext, payload: dict, now: datetime) -> dict:
                 {"k": idempotency_key},
             ).scalar()
             if existing:
-                return _resource(_require(conn,context,str(existing),now))
+                return replay(conn, existing)
         export_id = new_export_id()
         inserted = conn.execute(
             _INSERT_EXPORT_SQL,
@@ -194,6 +209,7 @@ def create(context: SessionContext, payload: dict, now: datetime) -> dict:
                 "report": REPORT_STATISTICS,
                 "requested_by": context.user_id,
                 "params": json.dumps(params, ensure_ascii=False),
+                "scope_student_ids": json.dumps(scope_snapshot) if scope_snapshot is not None else None,
                 "idempotency_key": idempotency_key,
             },
         ).scalar()
@@ -203,7 +219,7 @@ def create(context: SessionContext, payload: dict, now: datetime) -> dict:
                 text("SELECT export_id FROM export_jobs WHERE idempotency_key = :k"),
                 {"k": idempotency_key},
             ).scalar()
-            return _resource(_require(conn,context,str(rival),now))
+            return replay(conn, rival)
         from app.worker.scheduler import enqueue
         enqueue(conn,"EXPORT_BUILD",f"EXPORT_BUILD:{export_id}",{"export_id":export_id},now)
         return _resource(conn.execute(_LOAD_SQL, {"export_id": export_id}).mappings().one())
@@ -222,6 +238,16 @@ def list_mine(context: SessionContext, now: datetime) -> dict:
 def get(context: SessionContext, export_id: str, now: datetime) -> dict:
     with get_engine().connect() as conn:
         return _resource(_require(conn, context, export_id, now))
+
+
+def delete(context: SessionContext, export_id: str, now: datetime) -> dict:
+    """删除文件并隐藏本人记录；与 worker 锁同一任务行，保留审计元数据。"""
+    with get_engine().begin() as conn:
+        owner = conn.execute(text('SELECT requested_by FROM export_jobs WHERE export_id=:id FOR UPDATE'), {'id': export_id}).scalar()
+        if owner is None or owner != context.user_id:
+            raise _api_error(404, 'EXPORT_NOT_FOUND', '没有这个导出任务，或它不属于当前用户。', export_id=export_id)
+        conn.execute(text('UPDATE export_jobs SET deleted_at=COALESCE(deleted_at,:now),csv_content=NULL,file_name=NULL,updated_at=:now WHERE export_id=:id'), {'id': export_id, 'now': now})
+    return {'export_id': export_id, 'deleted': True}
 
 
 def download(context: SessionContext, export_id: str, now: datetime) -> tuple[str, str]:
@@ -279,15 +305,18 @@ def _aware(moment: datetime) -> datetime:
 def build(export_id: str, now: datetime) -> None:
     """worker 侧渲染：读统计读模型 → CSV → 落库。已完成的行不再重复生成。"""
     with get_engine().begin() as conn:
-        row = conn.execute(_LOAD_SQL, {"export_id": export_id}).mappings().first()
+        row = conn.execute(text(str(_LOAD_SQL) + ' FOR UPDATE'), {"export_id": export_id}).mappings().first()
         if row is None or row["status"] == "DONE":
             return
         conn.execute(
             text("UPDATE export_jobs SET status = 'RUNNING' WHERE export_id = :id"), {"id": export_id}
         )
         try:
-            body = statistics.query(conn, **dict(row["params"]))
-            csv_text, data_rows = render_csv(conn, body)
+            # scope_student_ids 为 NULL 表示不裁剪（园区全校与历史行）；否则只导发起时快照内的学生。
+            scope = row["scope_student_ids"]
+            allowed = None if scope is None else set(scope)
+            body = statistics.query(conn, **dict(row["params"]), allowed=allowed)
+            csv_text, data_rows = render_csv(conn, body, scoped=scope is not None)
         except ApiError as exc:
             # 口径非法是可解释的终态：落 FAILED 让园区改条件重发，而不是无限重试。
             conn.execute(
@@ -324,19 +353,19 @@ def _data_rows(body: dict) -> list[dict]:
     return body["rows"]
 
 
-def render_csv(conn: Connection, body: dict) -> tuple[str, int]:
-    """聚合结果 → (带口径说明的 CSV, 数据行数)。预约两列因来源未落地而不进文件，不用空列冒充。"""
+def render_csv(conn: Connection, body: dict, *, scoped: bool = False) -> tuple[str, int]:
+    """聚合结果 → (带口径说明的 CSV, 数据行数)，沿用六项受控指标。"""
     options = statistics.Options(conn)
     rows = _data_rows(body)
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer)
-    writer.writerow(["报表", "全校晚归统计（受控导出）"])
+    writer.writerow(["报表", "负责范围晚归统计（受控导出）" if scoped else "全校晚归统计（受控导出）"])
     writer.writerow(["业务夜区间", f"{body['range']['date_from']} 至 {body['range']['date_to']}"])
     writer.writerow(["归属口径", _ATTRIBUTION_LABELS.get(body["attribution"], body["attribution"])])
     dimension = _DIMENSION_LABELS.get(body["group_by"], body["group_by"])
     writer.writerow(["分组维度", dimension])
     writer.writerow(["筛选", _filters_text(options, body["filters"])])
-    writer.writerow(["数据缺口", "预约与未确认统计的来源未落地，本文件不含这两列"])
+    writer.writerow(["数据缺口", "；".join(body.get("data_gaps", [])) or "无"])
     writer.writerow([])
     writer.writerow([dimension, *[_COLUMN_LABELS[key] for key in _METRIC_COLUMNS]])
     for row in rows:

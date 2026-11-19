@@ -214,7 +214,9 @@ def test_a_range_without_facts_still_reports_the_roster(client) -> None:
         "unconfirmed": 0,
     }
     assert body["totals"]["enrolled"] > 0
-    assert body["rows"] == []
+    assert body["rows"]
+    assert all(r["returns"] == r["nights"] == r["people"] == 0 for r in body["rows"])
+    assert sum(r["enrolled"] for r in body["rows"]) == body["totals"]["enrolled"]
     assert body["by_day"] == []
 
 
@@ -242,9 +244,12 @@ def test_statistics_rejects_bad_calibers(client) -> None:
         assert response.json()["code"] == "VALIDATION_FAILED"
 
 
-@pytest.mark.parametrize("login_name", ["student", "counselor", "dorm"])
-def test_statistics_is_campus_only(client, login_name: str) -> None:
-    """统计与筛选器都只对园区开放，其他角色连选项都拿不到。"""
+@pytest.mark.parametrize("login_name", ["student", "dorm"])
+def test_statistics_denies_roles_without_grant(client, login_name: str) -> None:
+    """没有 statistics:read 的角色连选项都拿不到。
+
+    辅导员、思政与学院负责人已改为「范围内可见」，其裁剪与越权另见范围用例。
+    """
     headers = auth(token_for(client, login_name))
     for path in ("", "/filters"):
         response = client.get(f"{API}/statistics{path}", headers=headers, params=RANGE)

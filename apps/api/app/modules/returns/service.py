@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from app.core.clock import service_date_of, build_clock
+from app.core.clock import service_date_of, build_clock, is_night_gate
 from app.core.config import get_settings
 from app.core.night_lock import lock_night
 from app.core.db import get_engine
@@ -343,7 +343,7 @@ def _scoped_buildings(context: SessionContext, at: datetime) -> list[str]:
 def manual_record(context: SessionContext, payload: Mapping[str, object], at: datetime) -> dict:
     """宿管人工补录（R11）：按门铃等实际返宿情况，只走统一入口 `confirm_return`。
 
-    `occurred_at` 是宿管填报的发生时间，服务端校验它落在所声称的业务夜区间内且不未来；
+    `occurred_at` 是宿管填报的发生时间，服务端校验它位于夜间门禁时段、所声称业务夜且不未来；
     `recorded_at` 另存为记录时间。补录同样占用当夜名额，之后二维码扫码只记重复，不再补第二条。
     """
     student_id = _text_field(payload, "student_id")
@@ -351,12 +351,14 @@ def manual_record(context: SessionContext, payload: Mapping[str, object], at: da
     allowed_buildings = _scoped_buildings(context, at)
     if building_id not in allowed_buildings:
         raise out_of_scope("building", building_id, allowed_buildings)
+    occurred = _moment_field(payload, "occurred_at", at)
+    if not is_night_gate(occurred):
+        raise ApiError(422, "VALIDATION_FAILED", "实际返宿时间须在业务时区零点至六点前；白天可补填历史发生时间。", {"field": "occurred_at", "rule": "[00:00,06:00)"})
     night = (
         date.fromisoformat(str(payload["service_date"]))
         if payload.get("service_date")
-        else service_date_of(at)
+        else service_date_of(occurred)
     )
-    occurred = _moment_field(payload, "occurred_at", at)
     if occurred > at:
         raise ApiError(
             422,
@@ -487,8 +489,8 @@ def correct(context,return_id,note,occurred_at,at):
     from app.core.audit import append as audit
     record=scoped_record(context,return_id,at)
     if not note.strip() or len(note)>500:raise ApiError(422,"VALIDATION_FAILED","更正说明需要 1—500 字符。",{})
-    if occurred_at and (occurred_at>at or service_date_of(occurred_at).isoformat()!=record["service_date"]):
-        raise ApiError(422,"VALIDATION_FAILED","更正时间必须属于原业务夜且不能是未来。",{})
+    if occurred_at and (occurred_at>at or not is_night_gate(occurred_at) or service_date_of(occurred_at).isoformat()!=record["service_date"]):
+        raise ApiError(422,"VALIDATION_FAILED","更正时间必须在零点至六点前、属于原业务夜且不能是未来。",{})
     with Session(get_engine()) as db:
         row=ReturnCorrection(id="corr_"+uuid.uuid4().hex[:24],return_id=return_id,actor_user_id=context.user_id,note=note,occurred_at=occurred_at,created_at=at)
         db.add(row);audit(db,context.user_id,"RETURN_CORRECTED",return_id,{"note":note,"occurred_at":occurred_at.isoformat() if occurred_at else None},at);db.commit()

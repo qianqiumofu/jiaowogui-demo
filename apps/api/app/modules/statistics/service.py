@@ -29,6 +29,31 @@ GROUP_BY = ("none", "college", "park", "building", "grade", "gender", "trend")
 ATTRIBUTIONS = ("snapshot", "current")
 RESERVATION_GAP = "RESERVATION_SOURCE_UNAVAILABLE"
 
+
+def allowed_students(context) -> set[str] | None:
+    """把会话范围换算成「允许的学生集合」；None 表示不裁剪（园区全校）。
+
+    辅导员/思政=负责学生，学院负责人=所管学院学生，校级=全部学生，这些 scope 都带 student_ids；
+    园区是 ALL_AUTHORIZED 不带 student_ids，返回 None 保持全校口径。
+    范围本应带 student_ids 却缺失，说明负责关系未解析，拒绝而不是当成全校。
+    """
+    scope = context.scope or {}
+    if scope.get("scope") == "ALL_AUTHORIZED":
+        return None
+    ids = scope.get("student_ids")
+    if ids is None:
+        raise ApiError(403, "SCOPE_UNRESOLVED", "查询范围尚未由目录解析。", {"action": "statistics:read"})
+    return set(ids)
+
+
+def quick_overview(db, context, clock, period, filters):
+    """快捷统计复用报告读模型，只读；范围按调用者权限裁剪，园区为全校。"""
+    from app.modules.reports.school_statistics import overview
+    allowed = allowed_students(context)
+    ids = directory.students_in_colleges(sorted(directory.all_college_ids())) if allowed is None else sorted(allowed)
+    scoped = context.model_copy(update={'scope': {'student_ids': ids, 'resolved_by': context.scope.get('resolved_by', 'scoped')}})
+    return overview(db, scoped, clock, period, filters)
+
 _GENDER_LABELS = {"MALE": "男生", "FEMALE": "女生"}
 # 一条晚归事实：学生、业务夜、当晚年级、快照/当前楼栋、学院、性别、返宿来源。
 # 目录不存年级历史，`night_grade` 与 `enrolled_grade` 同源；residence LEFT JOIN 保留
@@ -69,12 +94,15 @@ def check_params(
     return_source: str | None,
     group_by: str,
     attribution: str,
+    education_level: str | None = None,
 ) -> tuple[date, date]:
     """校验口径参数并归一化成起止业务夜。
 
     公开给导出等下游调用方复用，避免「导出创建了、worker 构建时才发现参数非法」。
     """
     _validate(gender, return_source, group_by, attribution)
+    if education_level and education_level not in ("BACHELOR", "MASTER", "DOCTORAL"):
+        raise _api_error("培养层次取值不合法。")
     night_to = _parse_date(date_to, "date_to")
     night_from = _parse_date(date_from or date_to, "date_from")
     if night_from > night_to:
@@ -108,13 +136,23 @@ class Options:
             return self.parks.get(value, str(value))
         if dimension == "building":
             return self.buildings.get(value, str(value))
+        if dimension == "education_level":
+            return {"BACHELOR": "本科", "MASTER": "硕士", "DOCTORAL": "博士"}.get(value, str(value))
         if dimension == "gender":
             return _GENDER_LABELS.get(value, str(value))
         return str(value)
 
 
-def _keep(row: dict, filters: dict[str, str], attribution: str, options: Options) -> bool:
-    """同一套筛选同时作用在晚归事实行与在册名册行上，两类行的楼栋字段名不同。"""
+def _keep(row: dict, filters: dict[str, str], attribution: str, options: Options, allowed: set[str] | None = None) -> bool:
+    """同一套筛选同时作用在晚归事实行与在册名册行上，两类行的楼栋字段名不同。
+
+    `allowed` 非空时按权限范围裁剪：只保留本人负责集合内的学生（事实/在册/预约三类行都带 student_id）。
+    园区为 None，不裁剪，保持全校口径。
+    """
+    if allowed is not None and row.get("student_id") not in allowed:
+        return False
+    if filters.get("education_level") and row.get("education_level") != filters["education_level"]:
+        return False
     building = _building_of(row, attribution)
     if filters.get("college_org_id") and row["college_org_id"] != filters["college_org_id"]:
         return False
@@ -193,9 +231,9 @@ def _rows(
         {
             "value": value,
             "label": options.label(dimension, value),
-            **_metrics(bucket, enrolled_by_key.get(value, [])),
+            **_metrics(buckets.get(value, _new_bucket()), enrolled_by_key.get(value, [])),
         }
-        for value, bucket in buckets.items()
+        for value in set(buckets) | set(enrolled_by_key)
     ]
     out.sort(key=lambda item: (-item["nights"], -item["returns"], item["label"]))
     return out
@@ -209,13 +247,18 @@ def query(
     park_org_id: str | None = None,
     building_id: str | None = None,
     grade: str | None = None,
+    education_level: str | None = None,
     gender: str | None = None,
     return_source: str | None = None,
     group_by: str = "park",
     attribution: str = "snapshot",
+    allowed: set[str] | None = None,
 ) -> dict:
-    """园区统计读模型：三值分列 + 分组明细 + 逐日趋势。"""
-    night_from, night_to = check_params(date_from, date_to, gender, return_source, group_by, attribution)
+    """园区统计读模型：三值分列 + 分组明细 + 逐日趋势。
+
+    `allowed` 是调用者权限范围内的学生集合；None 表示不裁剪（园区全校）。
+    """
+    night_from, night_to = check_params(date_from, date_to, gender, return_source, group_by, attribution, education_level)
 
     filters = {
         key: value
@@ -224,6 +267,7 @@ def query(
             "park_org_id": park_org_id,
             "building_id": building_id,
             "grade": grade,
+            "education_level": education_level,
             "gender": gender,
             "return_source": return_source,
         }.items()
@@ -235,7 +279,7 @@ def query(
     late_rows = [
         dict(row)
         for row in _late_facts(conn,night_from,night_to)
-        if _keep(dict(row), filters, attribution, options)
+        if _keep(dict(row), filters, attribution, options, allowed)
     ]
 
     buckets: dict[Any, dict] = defaultdict(_new_bucket)
@@ -254,11 +298,11 @@ def query(
             _add_fact(totals, row)
 
     by_day = _by_day(buckets if group_by == "trend" else _night_buckets(late_rows),
-                     conn, night_from, night_to, filters, attribution, options)
+                     conn, night_from, night_to, filters, attribution, options, allowed)
     enrolled_range = [
         row
         for row in _enrolled_range(conn, night_from, night_to, attribution)
-        if _keep(row, filters, attribution, options)
+        if _keep(row, filters, attribution, options, allowed)
     ]
     if group_by == "none":
         rows = _rows(buckets, {None: enrolled_range}, "none", options)
@@ -268,7 +312,8 @@ def query(
         rows = _rows(buckets, enrolled_by_key, group_by, options)
 
     from app.modules.reports.readmodel import statistic_facts
-    reservation_rows = [r for r in statistic_facts(conn, start=night_from, end=night_to) if _keep(r, filters, attribution, options)]
+    with directory.prefetched_labels(conn):
+        reservation_rows = [r for r in statistic_facts(conn, start=night_from, end=night_to) if _keep(r, filters, attribution, options, allowed)]
     def counts(items):
         return {"reservations": len({r["student_id"] for r in items}), "unconfirmed": len({r["student_id"] for r in items if r["unconfirmed"]})}
     if group_by != "trend":
@@ -285,7 +330,7 @@ def query(
     for fact in reservation_rows:
         day = fact["service_date"].isoformat()
         if day not in days:
-            enrolled = [r for r in _enrolled_night(conn, fact["service_date"]) if _keep(r, filters, attribution, options)]
+            enrolled = [r for r in _enrolled_night(conn, fact["service_date"]) if _keep(r, filters, attribution, options, allowed)]
             days[day] = {"service_date": day, **_metrics(_new_bucket(), enrolled)}
     by_day = [days[k] for k in sorted(days)]
     for row in by_day:
@@ -330,6 +375,7 @@ def _by_day(
     filters: dict[str, str],
     attribution: str,
     options: Options,
+    allowed: set[str] | None = None,
 ) -> list[dict]:
     out = []
     for night in sorted(buckets):
@@ -337,15 +383,38 @@ def _by_day(
         enrolled = [
             row
             for row in _enrolled_night(conn, night)
-            if _keep(row, filters, attribution, options)
+            if _keep(row, filters, attribution, options, allowed)
         ]
         out.append({"service_date": night.isoformat(), **_metrics(bucket, enrolled)})
     return out
 
 
-def filters(conn: Connection) -> dict:
-    """筛选器选项：学院、片区（含楼栋数）、楼栋、年级、性别、晚归来源。"""
-    return directory.filter_catalog(conn)
+def filters(conn: Connection, allowed: set[str] | None = None) -> dict:
+    """筛选器选项：学院、片区（含楼栋数）、楼栋、年级、性别、晚归来源。
+
+    `allowed` 非空时把目录收窄到调用者负责范围内实际存在的选项；园区为 None，返回全校目录。
+    片区楼栋数按收窄后的楼栋重算，避免显示范围外的栋数。
+    """
+    catalog = directory.filter_catalog(conn)
+    if allowed is None:
+        return catalog
+    facets = directory.scope_facets(conn, allowed)
+    buildings = [b for b in catalog["buildings"] if b["building_id"] in facets["building_ids"]]
+    park_counts: dict[str, int] = {}
+    for b in buildings:
+        park_counts[b["park_org_id"]] = park_counts.get(b["park_org_id"], 0) + 1
+    return {
+        **catalog,
+        "colleges": [c for c in catalog["colleges"] if c["org_id"] in facets["college_org_ids"]],
+        "parks": [
+            {**p, "building_count": park_counts.get(p["org_id"], 0)}
+            for p in catalog["parks"]
+            if p["org_id"] in facets["park_org_ids"]
+        ],
+        "buildings": buildings,
+        "grades": [g for g in catalog["grades"] if g in facets["grades"]],
+        "education_levels": [e for e in catalog["education_levels"] if e in facets["education_levels"]],
+    }
 
 
 def _late_facts(conn,start,end):

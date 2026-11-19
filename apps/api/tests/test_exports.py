@@ -255,9 +255,9 @@ def test_listing_is_newest_first_and_limited_to_the_requester(client) -> None:
         _purge(first["export_id"], second["export_id"])
 
 
-def test_export_is_campus_only(client) -> None:
+def test_export_denies_roles_without_export_permission(client) -> None:
     before = _export_count()
-    for login_name in ("student", "counselor", "dorm"):
+    for login_name in ("student", "dorm"):
         headers = auth(token_for(client, login_name))
         payload = {"report": "STATISTICS", "params": PARAMS}
         for method, path in (("post", ""), ("get", ""), ("get", "/exp_test_foreign")):
@@ -270,6 +270,94 @@ def test_export_is_campus_only(client) -> None:
             assert response.status_code == 403, (login_name, method, path, response.text)
             assert response.json()["code"] == "FORBIDDEN_ACTION"
     assert _export_count() == before
+
+
+def test_same_key_with_changed_params_is_a_conflict(client):
+    first = _create(client, idempotency_key="test-export-conflict")
+    try:
+        response = client.post(f"{API}/exports", headers=_campus(client), json={
+            "report": "STATISTICS", "params": {**PARAMS, "group_by": "building"},
+            "idempotency_key": "test-export-conflict",
+        })
+        assert response.status_code == 409, response.text
+        assert response.json()["code"] == "IDEMPOTENCY_CONFLICT"
+    finally:
+        _purge(first["export_id"])
+
+
+@pytest.mark.parametrize("key", ["", "x" * 129, 123])
+def test_invalid_idempotency_key_is_rejected(client, key):
+    response = client.post(f"{API}/exports", headers=_campus(client), json={
+        "report": "STATISTICS", "params": PARAMS, "idempotency_key": key,
+    })
+    assert response.status_code == 422, response.text
+
+
+@pytest.mark.parametrize("login", ["counselor", "ideology", "college_admin"])
+def test_export_worker_uses_requesters_scope_snapshot(client, login):
+    import csv
+    import io
+
+    headers = auth(token_for(client, login))
+    params = {**PARAMS, "education_level": "BACHELOR"}
+    response = client.post(f"{API}/exports", headers=headers, json={"report": "STATISTICS", "params": params})
+    assert response.status_code == 201, response.text
+    export_id = response.json()["export_id"]
+    try:
+        expected = client.get(f"{API}/statistics", headers=headers, params=params).json()["totals"]
+        with get_engine().connect() as conn:
+            scope = conn.execute(text("SELECT scope_student_ids FROM export_jobs WHERE export_id=:id"), {"id": export_id}).scalar()
+        assert scope is not None
+        _run_export_handler(export_id)
+        download = client.get(f"{API}/exports/{export_id}/download", headers=headers)
+        assert download.status_code == 200, download.text
+        assert "来源未落地" not in download.text
+        assert "全校晚归统计" not in download.text
+        rows = list(csv.reader(io.StringIO(download.text.lstrip("\ufeff"))))
+        assert [int(cell) for cell in rows[-1][1:]] == [expected[k] for k in ("people", "nights", "returns", "qr_returns", "manual_returns", "enrolled")]
+        foreign = client.get(f"{API}/exports/{export_id}/download", headers=_campus(client))
+        assert foreign.status_code == 404
+    finally:
+        _purge(export_id)
+
+
+def test_new_key_creates_a_fresh_export_for_same_filters(client):
+    first = _create(client, idempotency_key="test-export-first")
+    second = _create(client, idempotency_key="test-export-fresh")
+    try:
+        assert first["export_id"] != second["export_id"]
+    finally:
+        _purge(first["export_id"], second["export_id"])
+
+
+def test_replay_rejects_changed_scope_and_worker_keeps_original_scope(client, monkeypatch):
+    from app.modules.exports import service
+
+    headers = auth(token_for(client, "counselor"))
+    payload = {"report": "STATISTICS", "params": PARAMS, "idempotency_key": "test-scope-replay"}
+    response = client.post(f"{API}/exports", headers=headers, json=payload)
+    assert response.status_code == 201, response.text
+    export_id = response.json()["export_id"]
+    try:
+        with get_engine().connect() as conn:
+            snapshot = conn.execute(text("SELECT scope_student_ids FROM export_jobs WHERE export_id=:id"), {"id": export_id}).scalar()
+        assert snapshot
+        monkeypatch.setattr(service.statistics, "allowed_students", lambda context: set())
+        replay = client.post(f"{API}/exports", headers=headers, json=payload)
+        assert replay.status_code == 409, replay.text
+        original_query = service.statistics.query
+        seen = []
+
+        def capture(conn, **kwargs):
+            seen.append(kwargs["allowed"])
+            return original_query(conn, **kwargs)
+
+        monkeypatch.setattr(service.statistics, "query", capture)
+        _run_export_handler(export_id)
+        assert seen == [set(snapshot)]
+        assert client.get(f"{API}/exports/{export_id}", headers=headers).json()["downloadable"] is True
+    finally:
+        _purge(export_id)
 
 
 def test_the_worker_loop_uses_the_same_registry_entry(client) -> None:

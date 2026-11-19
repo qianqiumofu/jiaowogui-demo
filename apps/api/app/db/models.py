@@ -134,6 +134,7 @@ class Student(Base):
     __table_args__ = (
         # 性别是统计维度之一（R14），合成值；实际字段以学校目录映射为准（R02）。
         CheckConstraint(f"gender IN {_STUDENT_GENDERS}", name="ck_students_gender"),
+        CheckConstraint("education_level IN ('BACHELOR', 'MASTER', 'DOCTORAL')", name="ck_students_education_level"),
     )
 
     student_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -145,6 +146,7 @@ class Student(Base):
     )
     major: Mapped[str] = mapped_column(String(64), nullable=False, default="合成专业", server_default="合成专业")
     class_name: Mapped[str] = mapped_column(String(32), nullable=False, default="合成班级", server_default="合成班级")
+    education_level: Mapped[str | None] = mapped_column(String(16))
     grade: Mapped[str] = mapped_column(String(8), nullable=False)
     gender: Mapped[str] = mapped_column(String(8), nullable=False)
     phone: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -319,6 +321,8 @@ class ExportJob(Base):
     report: Mapped[str] = mapped_column(String(32), nullable=False)
     requested_by: Mapped[str] = mapped_column(ForeignKey("users.user_id"), nullable=False, index=True)
     params: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    scope_student_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="PENDING")
     file_name: Mapped[str | None] = mapped_column(String(128))
     csv_content: Mapped[str | None] = mapped_column(Text)

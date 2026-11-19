@@ -35,6 +35,8 @@ def assert_target(context,target,role,student_ids,colleges):
         raise ApiError(422,"VALIDATION_FAILED","只有学校确认的教师可以获授工作职责。",{})
     if role not in (Role.COUNSELOR,Role.IDEOLOGY,Role.COLLEGE_ADMIN,Role.CAMPUS):
         raise ApiError(403,"FORBIDDEN_ACTION","基础身份和校级管理权限不能经普通职责接口授予。",{})
+    if context.active_role is Role.AUTH_ADMIN and (role is not Role.COLLEGE_ADMIN or student_ids):
+        raise ApiError(403,"FORBIDDEN_ACTION","校级仅可任免学院负责人，具体教师职责与学生范围由学院负责人配置。",{})
     known=directory.student_colleges(student_ids)
     if len(known)!=len(set(student_ids)):
         raise ApiError(422,"VALIDATION_FAILED","部分学生编号不存在。",{})
@@ -53,7 +55,7 @@ def assert_existing_responsibilities(context,target,at):
         actual=directory.get_assigned_students(target.user_id,at)
         colleges=set(directory.student_colleges(actual).values())
         if not colleges.issubset(set(context.scope.get('college_org_ids') or [])):
-            raise ApiError(403,'OUT_OF_SCOPE','该教师现有负责关系包含其他学院，请由校级部门调整。',{})
+            raise ApiError(403,'OUT_OF_SCOPE','该教师现有负责关系包含其他学院，请由相关学院协调调整。',{})
 
 
 def managed_rows(guard,q=None,college_org_id=None,identity_type=None):
@@ -84,6 +86,8 @@ def grants(guard:Guard,db:DB,request:Request):
     allowed={u["user_id"] for u in managed_rows(guard)}
     items=[]
     for row in db.scalars(select(RoleAssignment).where(RoleAssignment.user_id.in_(allowed)).order_by(RoleAssignment.id)):
+        if guard.active_role is Role.AUTH_ADMIN and row.role != "COLLEGE_ADMIN":
+            continue
         item=view(row)
         if row.active and row.role in ('COUNSELOR','IDEOLOGY') and 'student_ids' not in row.scope:
             item['student_ids']=directory.get_assigned_students(row.user_id,request.app.state.clock.now())

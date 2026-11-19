@@ -638,6 +638,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/staff-accounts/{staff_account_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 启用宿管工号账号
+         * @description 仅园区角色（staff_account:enable）。把已停用账号恢复为在用，清除停用时间；恢复后可再次登录，楼栋范围沿用账号当前绑定。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    staff_account_id: components["parameters"]["StaffAccountId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 已启用的账号 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StaffAccount"];
+                    };
+                };
+                /** @description 非园区角色 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 账号不存在 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reservations": {
         parameters: {
             query?: never;
@@ -1065,8 +1124,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 辅导员日报事实（按需读取）
-         * @description 只返回当前账号负责关系内、指定业务夜的预约事实与按 `reports.summary` 口径算出的计数 （report:read）。缺省看服务端当前时刻的前一晚；传入晚于当前业务日的日期返回 422。 与 08:30 投递的日报邮件同取数、同口径，两处数字不可能不一致。未确认返宿只是没有匹配到 通行记录，接口不据此生成任何提醒（R15）。负责关系尚未同步时返回 403 `SCOPE_UNRESOLVED`。
+         * 授权范围内晚归日报（校级可查看全校）
+         * @description 校级 AUTH_ADMIN 可查看服务端 scope 内全校学生，学院负责人查看获授学院，负责教师查看明确负责学生；返回指定业务夜的预约事实与按 `reports.summary` 口径算出的计数 （report:read）。缺省看服务端当前时刻的前一晚；传入晚于当前业务日的日期返回 422。 与 08:30 投递的日报邮件同取数、同口径，两处数字不可能不一致。未确认返宿只是没有匹配到 通行记录，接口不据此生成任何提醒（R15）。负责关系尚未同步时返回 403 `SCOPE_UNRESOLVED`。
          */
         get: {
             parameters: {
@@ -1125,8 +1184,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 辅导员周报事实（按需读取）
-         * @description 以指定业务夜为末夜，向前覆盖 `weekly_report_nights` 个业务夜（含空夜，逐夜一行）。 计数与投递出去的周报正文同口径；一周内一个预约都没有也返回全零行，不返回空对象。
+         * 授权范围内晚归周报（校级可查看全校）
+         * @description report:read 按服务端 scope 授权；校级全校、学院负责人获授学院、负责教师明确负责学生，仅只读。以指定业务夜为末夜，向前覆盖 `weekly_report_nights` 个业务夜（含空夜，逐夜一行）。 计数与投递出去的周报正文同口径；一周内一个预约都没有也返回全零行，不返回空对象。
          */
         get: {
             parameters: {
@@ -1444,7 +1503,7 @@ export interface paths {
         put?: never;
         /**
          * 宿管现场补录返宿
-         * @description 动作 manual_return:create 只授予宿管。补录与扫码共用同一唯一约束 （student_id, service_date），因此同一夜只有一条返宿事实； occurred_at 必须与所声称业务夜同夜且不晚于服务端当前时间。
+         * @description 动作 manual_return:create 只授予宿管。补录与扫码共用同一唯一约束 （student_id, service_date），因此同一夜只有一条返宿事实； occurred_at 必须在业务时区 [00:00,06:00) 内，与所声称业务夜同夜且不晚于服务端当前时间。允许白天补填历史发生时间；未填 service_date 时从 occurred_at 派生。
          */
         post: {
             parameters: {
@@ -1616,8 +1675,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 园区端全校晚归统计
-         * @description 动作 statistics:read 只授予园区，数据范围固定全校（R14）。 可按学院、片区、楼栋、年级、性别筛选；人数、晚归夜数、返宿次数三值分列， 取消、领码与未确认返宿不计实际晚归（R10、R15）。 归属默认按业务夜发生时快照（住宿按 `residences` 生效区间、年级按年份推算）， `attribution=current` 切换为当前归属口径。 预约人数与未确认人数经共享报告读模型计算；取消不计，未确认仅表示没有匹配到正式返宿记录。 两个日期都不传时统计「当前业务夜往前 14 个业务夜」（Demo 默认，见 `docs/13-待确认事项.md`）； 只传一个日期就是那一夜。响应里的 `range` 回显实际统计到的区间。
+         * 全校晚归统计（园区全校；辅导员/思政/学院负责人按范围收窄）
+         * @description 动作 statistics:read 授予园区、辅导员、思政与学院负责人。园区数据范围为全校（R14）； 辅导员/思政限本人负责学生、学院负责人限获授学院学生，范围外记录一律不出现在聚合里（权限由后端 scope 执行，非前端隐藏）。 可按学院、片区、楼栋、年级、培养层次、性别筛选，筛选目录同样按调用者范围收窄；人数、晚归夜数、返宿次数三值分列， 取消、领码与未确认返宿不计实际晚归（R10、R15）。 归属默认按业务夜发生时快照（住宿按 `residences` 生效区间、年级按年份推算）， `attribution=current` 切换为当前归属口径。 预约人数与未确认人数经共享报告读模型计算；取消不计，未确认仅表示没有匹配到正式返宿记录。 两个日期都不传时统计「当前业务夜往前 14 个业务夜」（Demo 默认，见 `docs/13-待确认事项.md`）； 只传一个日期就是那一夜。响应里的 `range` 回显实际统计到的区间。
          */
         get: operations["get_campus_statistics"];
         put?: never;
@@ -1636,8 +1695,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 园区统计筛选器选项
-         * @description 动作 campus:query 只授予园区；返回学院、片区、楼栋、年级、性别、晚归来源的可选值。 只读 `organizations`、`buildings`、`students` 的目录行，不返回个人字段。
+         * 晚归统计筛选器选项（按调用者范围收窄）
+         * @description 动作 statistics:read；返回学院、片区（含楼栋数）、楼栋、年级、培养层次、性别、晚归来源的可选值。 园区返回全校目录；辅导员/思政/学院负责人只返回其负责范围内实际存在的选项，范围外的组织结构不出现在下拉里。 只读 `organizations`、`buildings`、`students` 的目录行，不返回个人字段。
          */
         get: operations["get_statistics_filters"];
         put?: never;
@@ -1663,7 +1722,7 @@ export interface paths {
         put?: never;
         /**
          * 发起受控导出
-         * @description 动作 export:create 只授予园区（R11 字段级权限）。导出内容永远是 `/statistics` 的聚合结果， 不含学生明细，所以联系方式与身份天然不在范围内。`params.date_from/date_to` 必须显式给出， 审计要能回答「导的是哪几夜」。接口只登记任务并排队 EXPORT_BUILD，渲染由 worker 完成， 因此 201 返回的资源通常是 PENDING；同一 `idempotency_key` 重复提交返回同一任务。
+         * @description 动作 export:create 授予园区、辅导员、思政与学院负责人（R11 字段级权限）。导出内容永远是 `/statistics` 的聚合结果， 不含学生明细，所以联系方式与身份天然不在范围内。园区导出全校；辅导员/思政/学院负责人在创建时把本人负责学生集合快照存入任务 （`scope_student_ids`），worker 渲染只导该快照内的学生，之后负责关系变更不影响这次导出。 `params.date_from/date_to` 必须显式给出， 审计要能回答「导的是哪几夜」。接口只登记任务并排队 EXPORT_BUILD，渲染由 worker 完成， 因此 201 返回的资源通常是 PENDING；同一用户、同一角色范围及参数的同一 `idempotency_key` 重复提交返回同一任务。 同一用户重复使用键但参数或角色范围改变时返回 409 IDEMPOTENCY_CONFLICT；其他用户的键返回 404，不泄露任务。 需要重新生成最新数据时使用新键。CSV 仅含既有六项聚合指标，数据缺口说明取实际查询结果。
          */
         post: operations["create_campus_export"];
         delete?: never;
@@ -1686,7 +1745,11 @@ export interface paths {
         get: operations["get_campus_export"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 删除本人的导出记录和文件
+         * @description 动作 export:delete；只允许发起人。清空文件并从本人列表、详情和下载隐藏，后台任务审计保留。排队和生成中同样可删除，worker 不得恢复文件；重复删除返回同一成功结果。不存在或他人任务 404。
+         */
+        delete: operations["delete_export"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2187,7 +2250,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 授权范围内的教师与管理人员 */
+        /**
+         * 授权范围内的教师与管理人员
+         * @description 校级使用 identity_type=TEACHER 可查询全校所有教师，不受候选人所属学院限制；学院负责人仅查询获授学院教师。
+         */
         get: operations["get_management_users"];
         put?: never;
         post?: never;
@@ -2204,10 +2270,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 职责与范围授予记录 */
+        /**
+         * 职责与范围授予记录
+         * @description AUTH_ADMIN 仅返回学院负责人记录；学院负责人查看本学院教师职责。
+         */
         get: operations["get_management_grants"];
         put?: never;
-        /** 上级授予职责；学院负责人仅可分配本学院学生 */
+        /**
+         * 校级仅任免学院负责人；学院负责人分配本学院教师与学生
+         * @description AUTH_ADMIN 仅允许 COLLEGE_ADMIN 且 student_ids 必须为空，教师从全校目录选择。COLLEGE_ADMIN 仅允许本学院 COUNSELOR/IDEOLOGY 与获授学院内学生。越权返回 403。
+         */
         post: operations["post_management_grants"];
         delete?: never;
         options?: never;
@@ -2225,7 +2297,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** 撤回职责，旧会话即时失效 */
+        /**
+         * 取消负责（撤回职责），旧会话即时失效
+         * @description 取消该项职责及其负责关系，保留审计；其他职责不变。AUTH_ADMIN 仅允许取消学院负责人，其他角色职责返回 403。前端可显示为“取消负责”。
+         */
         delete: operations["delete_management_grants_grant_id"];
         options?: never;
         head?: never;
@@ -2344,7 +2419,10 @@ export interface paths {
         /** 范围内正式记录的只追加纠错历史 */
         get: operations["get_return-records_return_id_corrections"];
         put?: never;
-        /** 宿管追加更正证据，不覆盖原始记录 */
+        /**
+         * 宿管追加更正证据，不覆盖原始记录
+         * @description 更正发生时间必须在业务时区 [00:00,06:00) 内，属于原业务夜且不晚于服务端当前时间；允许白天提交历史更正。
+         */
         post: operations["post_return-records_return_id_corrections"];
         delete?: never;
         options?: never;
@@ -2361,7 +2439,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 负责教师或当班宿管解决事件 */
+        /**
+         * 负责教师或当班宿管完成人工跟进并办结
+         * @description 必须先确认接手（ACKNOWLEDGED），写明核实结果与处置说明；邮件发送、打开通知均不代表跟进。OPEN 直接办结返回 409。
+         */
         post: operations["post_risk-events_event_id_resolve"];
         delete?: never;
         options?: never;
@@ -2447,8 +2528,403 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 负责教师或当班宿管确认风险跟进 */
+        /**
+         * 负责教师或当班宿管确认接手
+         * @description 人工确认收到并承担处理，OPEN 转 ACKNOWLEDGED（跟进中），不代表已核实或已办结。邮件或站内通知发送不改变状态。
+         */
         post: operations["ack_risk_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 校级日周月人数统计，不返回学生名单
+         * @description 仅 AUTH_ADMIN，require(report:statistics) 与 SessionContext.scope。日期按服务端业务夜计算。学院年级取目录现值，住宿按发生夜归属；筛选仅显式查询提交。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    period?: "DAY" | "WEEK" | "MONTH";
+                    college_org_id?: string;
+                    grade?: string;
+                    park_org_id?: string;
+                    building_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SchoolOverview"];
+                    };
+                };
+                /** @description 无权 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 周期、筛选或游标无效 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/overview/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 校级统计筛选选项，不返回学生身份
+         * @description 仅 AUTH_ADMIN，require(report:statistics) 与 SessionContext.scope。日期按服务端业务夜计算。学院年级取目录现值，住宿按发生夜归属；筛选仅显式查询提交。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StatisticsOptions"];
+                    };
+                };
+                /** @description 无权 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 周期、筛选或游标无效 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/overview/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 主动查询统计名单；全部条件也必须主动提交
+         * @description 仅 AUTH_ADMIN，require(report:statistics) 与 SessionContext.scope。日期按服务端业务夜计算。学院年级取目录现值，住宿按发生夜归属；筛选仅显式查询提交。
+         */
+        get: {
+            parameters: {
+                query: {
+                    period?: "DAY" | "WEEK" | "MONTH";
+                    college_org_id?: string;
+                    grade?: string;
+                    park_org_id?: string;
+                    building_id?: string;
+                    dataset: "RETURNED" | "RESERVED" | "REPEATED";
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SchoolStatisticsStudentList"];
+                    };
+                };
+                /** @description 无权 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 周期、筛选或游标无效 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/statistics/quick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 今日、本周、本月快捷人数统计（园区全校；辅导员/思政/学院负责人按范围收窄）
+         * @description statistics:read + SessionContext.scope。园区全校授权；辅导员/思政限本人负责学生、学院负责人限获授学院学生，范围外一律不计。DAY 分昨夜正式晚归与今夜非取消预约；周/月按最近已结束夜所在自然周/月起点至该夜。服务端判定日期，仅返回人数不返回名单。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    period?: "DAY" | "WEEK" | "MONTH";
+                    college_org_id?: string;
+                    education_level?: components["schemas"]["EducationLevel"];
+                    grade?: string;
+                    park_org_id?: string;
+                    building_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SchoolOverview"];
+                    };
+                };
+                /** @description 无权或范围未解析 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 周期或筛选无效 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk-events/{event_id}/follow-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 追加人工跟进记录，保持跟进中
+         * @description require(risk:follow_up) + SessionContext.scope，仅负责COUNSELOR/IDEOLOGY和当班DORM_MANAGER。须先接手；说明1—500字符，idempotency_key用于重复请求去重，同键不同说明409。管理身份只读；通知发送不算跟进。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    event_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RiskFollowUpRequest"];
+                };
+            };
+            responses: {
+                /** @description 跟进记录已保存 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RiskEvent"];
+                    };
+                };
+                /** @description 角色无权 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 事件不在负责范围 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 未接手、已办结或幂等冲突 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 说明或幂等键无效 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/campus/night-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 园区按楼栋查看业务夜汇总与负责人
+         * @description 沿用campus:query与园区范围。只读不推送；未汇总人数为null。负责人取冻结值，旧快照缺字段返回UNAVAILABLE，未汇总返回LIVE。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    service_date?: string;
+                    park_org_id?: string;
+                    building_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CampusNightSummary"];
+                    };
+                };
+                /** @description 无权 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 日期或筛选无效 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3037,6 +3513,7 @@ export interface components {
             /** Format: date */
             service_date: string;
         };
+        /** @description 分组明细覆盖有事实或有在册学生的分组，无晚归分组显示零值。 */
         Statistics: {
             /** @enum {string} */
             group_by: "none" | "college" | "park" | "building" | "grade" | "gender" | "trend";
@@ -3057,6 +3534,11 @@ export interface components {
             /** @description 依赖能力未落地导致的空字段登记，如 RESERVATION_SOURCE_UNAVAILABLE */
             data_gaps: string[];
         };
+        /**
+         * @description 目录明确提供的培养层次；旧档案未知值保留空值，不按学号或年级推断。
+         * @enum {string}
+         */
+        EducationLevel: "BACHELOR" | "MASTER" | "DOCTORAL";
         StatisticsOptions: {
             colleges: {
                 org_id: string;
@@ -3073,6 +3555,7 @@ export interface components {
                 code: string;
                 park_org_id: string;
             }[];
+            education_levels: components["schemas"]["EducationLevel"][];
             grades: string[];
             genders: ("MALE" | "FEMALE")[];
             return_sources: ("QR" | "MANUAL")[];
@@ -3092,6 +3575,7 @@ export interface components {
                 college_org_id?: string;
                 park_org_id?: string;
                 building_id?: string;
+                education_level?: components["schemas"]["EducationLevel"];
                 grade?: string;
                 /** @enum {string} */
                 gender?: "MALE" | "FEMALE";
@@ -3102,7 +3586,7 @@ export interface components {
                 /** @enum {string} */
                 attribution?: "snapshot" | "current";
             };
-            /** @description 同一键重复提交返回同一任务，不重复排队 */
+            /** @description 同一用户同一参数与范围的同一键返回原任务；参数或范围不同时 409。重新生成使用新键。 */
             idempotency_key?: string | null;
         };
         ExportJob: {
@@ -3212,12 +3696,16 @@ export interface components {
             daily: boolean;
             weekly: boolean;
         };
+        /** @description OPEN=待接手；ACKNOWLEDGED=已接手/跟进中；RESOLVED=人工跟进完成并办结。投递通知和阅读不改变此状态。 */
         RiskEvent: {
+            display_name?: string;
+            school_id?: string;
             actions?: {
                 id: string;
                 actor_user_id: string;
+                actor_display_name?: string;
                 /** @enum {string} */
-                action: "ACK" | "RESOLVE";
+                action: "ACK" | "FOLLOW_UP" | "RESOLVE";
                 note: string;
                 /** Format: date-time */
                 created_at: string;
@@ -3308,6 +3796,80 @@ export interface components {
         };
         DutyAssignmentList: {
             items: components["schemas"]["DutyAssignment"][];
+            next_cursor: string | null;
+        };
+        /** @description 日按前一/当前业务夜；周月按前一夜所在自然周/月截至前一夜。多次阈值配置化。仅人数，不含名单。 */
+        SchoolOverview: {
+            /**
+             * @default DAY
+             * @enum {string}
+             */
+            period: "DAY" | "WEEK" | "MONTH";
+            /** Format: date */
+            current_service_date: string;
+            /** Format: date */
+            date_from: string;
+            /** Format: date */
+            date_to: string;
+            /** Format: date-time */
+            generated_at: string;
+            yesterday_returned_people: number;
+            today_reserved_people: number;
+            returned_people: number;
+            returned_nights: number;
+            repeated_people: number;
+            repeat_min_nights: number;
+        };
+        /** @description 匹配业务夜聚合；住宿显示最近匹配夜归属，return_nights 不计预约。 */
+        SchoolStatisticsStudent: {
+            student_id: string;
+            school_id: string;
+            display_name: string;
+            college_org_id: string;
+            college_name: string;
+            grade: string;
+            building_id: string;
+            building_name: string;
+            park_org_id: string;
+            park_name: string;
+            return_nights: number;
+            service_dates: string[];
+        };
+        SchoolStatisticsStudentList: {
+            items: components["schemas"]["SchoolStatisticsStudent"][];
+            next_cursor: string | null;
+            total_matches: number;
+        };
+        RiskFollowUpRequest: {
+            note: string;
+            idempotency_key: string;
+        };
+        CampusNightSummaryRow: {
+            building_id: string;
+            building_name: string;
+            park_org_id: string;
+            park_name: string;
+            /** @enum {string} */
+            summary_status: "PENDING" | "SUMMARIZED";
+            /** Format: date-time */
+            summary_generated_at: string | null;
+            headcount: number | null;
+            returned_count: number;
+            /** @enum {string} */
+            responsible_source: "LIVE" | "SNAPSHOT" | "UNAVAILABLE";
+            responsible: {
+                user_id: string;
+                display_name: string;
+                /** @enum {string} */
+                kind: "FIXED" | "SUBSTITUTE";
+            }[];
+        };
+        CampusNightSummary: {
+            /** Format: date */
+            service_date: string;
+            /** Format: date-time */
+            summary_due_at: string;
+            items: components["schemas"]["CampusNightSummaryRow"][];
             next_cursor: string | null;
         };
     };
@@ -3402,6 +3964,7 @@ export interface operations {
                 /** @description 片区（organizations 的 CAMPUS_PARK 行） */
                 park_org_id?: string;
                 building_id?: string;
+                education_level?: components["schemas"]["EducationLevel"];
                 grade?: string;
                 gender?: "MALE" | "FEMALE";
                 return_source?: "QR" | "MANUAL";
@@ -3424,7 +3987,7 @@ export interface operations {
                     "application/json": components["schemas"]["Statistics"];
                 };
             };
-            /** @description 角色无该动作，或园区范围未解析成功 */
+            /** @description 角色无该动作（FORBIDDEN_ACTION），或范围角色未解析出负责学生（SCOPE_UNRESOLVED） */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3524,6 +4087,24 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description 幂等键属于其他用户（EXPORT_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 同一幂等键的参数或角色范围不一致（IDEMPOTENCY_CONFLICT） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description 口径非法（缺区间、未知键、report 不支持），创建即拒绝 */
             422: {
                 headers: {
@@ -3575,6 +4156,50 @@ export interface operations {
             };
         };
     };
+    delete_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        export_id: string;
+                        /** @constant */
+                        deleted: true;
+                    };
+                };
+            };
+            /** @description 无 export:delete 动作权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     download_campus_export: {
         parameters: {
             query?: never;
@@ -3586,7 +4211,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description CSV 文本 */
+            /** @description 带 UTF-8 BOM（EF BB BF）的 CSV 文件；浏览器须原样保存响应字节，避免文本解码丢失 BOM 后 Excel 误判中文编码。 */
             200: {
                 headers: {
                     [name: string]: unknown;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import ReturnDetails from '@/features/shared/components/ReturnDetails.vue'
 const props=defineProps<{selfView?:boolean}>()
 
@@ -9,11 +9,16 @@ import { describeError, useSessionStore } from '@/shared/stores/session'
 
 const session = useSessionStore()
 
-const state = ref<'loading' | 'ready' | 'denied' | 'error'>('loading')
+const state = ref<'idle' | 'loading' | 'ready' | 'denied' | 'error'>('idle')
 const notice = ref('')
 const data = ref<ReturnRecords | null>(null)
 const serviceDate = ref('')
 const activeBuilding = ref('')
+const currentNight = ref('')
+let sequence = 0
+function invalidate() { sequence++; data.value = null; state.value = 'idle'; notice.value = '' }
+watch([serviceDate, activeBuilding], invalidate, { flush: 'sync' })
+onBeforeUnmount(invalidate)
 
 const buildings = computed(() => session.context?.scope.building_ids ?? [])
 const items = computed<ReturnRecordItem[]>(() => data.value?.items ?? [])
@@ -30,16 +35,20 @@ function passLabel(item: ReturnRecordItem): string {
 }
 
 async function load() {
+  const requestSequence = ++sequence
   state.value = 'loading'
+  data.value = null
   notice.value = ''
   try {
-    data.value = await (props.selfView ? api.ownReturnRecords : api.returnRecords)({
+    const response = await (props.selfView ? api.ownReturnRecords : api.returnRecords)({
       serviceDate: serviceDate.value || undefined,
       buildingId: activeBuilding.value || undefined,
     })
-    serviceDate.value = data.value.service_date
+    if (requestSequence !== sequence) return
+    data.value = response
     state.value = 'ready'
   } catch (cause) {
+    if (requestSequence !== sequence) return
     data.value = null
     if (cause instanceof ApiRequestError) {
       state.value =
@@ -57,19 +66,18 @@ async function load() {
 }
 
 function shiftNight(days: number) {
-  const next = new Date(`${serviceDate.value}T12:00:00`)
+  const next = new Date(`${serviceDate.value || currentNight.value}T12:00:00`)
   next.setDate(next.getDate() + days)
   serviceDate.value = next.toISOString().slice(0, 10)
-  load()
 }
 
 function clockTime(value?: string | null): string {
   return value ? value.slice(11, 19) : '—'
 }
 
-onMounted(() => {
+onMounted(async () => {
   activeBuilding.value = buildings.value[0] ?? ''
-  load()
+  try { currentNight.value = (await api.clock()).service_date; serviceDate.value = currentNight.value } catch (cause) { notice.value = describeError(cause) }
 })
 </script>
 
@@ -81,13 +89,15 @@ onMounted(() => {
         <div class="records__actions">
           <button class="panel__reload" type="button" @click="shiftNight(-1)">前一晚</button>
           <button class="panel__reload" type="button" @click="shiftNight(1)">后一晚</button>
-          <button class="panel__reload" type="button" @click="serviceDate = ''; load()">
+          <button class="panel__reload" type="button" @click="serviceDate = currentNight; invalidate()">
             回到今晚
           </button>
-          <button class="panel__reload" type="button" @click="load">重新读取</button>
+          <button class="panel__reload" type="button" @click="load" :disabled="state === 'loading'">查询</button>
         </div>
       </header>
 
+      <label>业务夜 <input v-model="serviceDate" type="date"></label>
+      <p v-if="notice && state === 'idle'" role="status">{{ notice }}</p>
       <nav v-if="buildings.length > 1" class="tonight__tabs">
         <button
           v-for="building in buildings"
@@ -95,7 +105,7 @@ onMounted(() => {
           class="tonight__tab"
           :class="{ 'tonight__tab--active': building === activeBuilding }"
           type="button"
-          @click="activeBuilding = building; load()"
+          @click="activeBuilding = building"
         >
           {{ building }}
         </button>
@@ -117,6 +127,7 @@ onMounted(() => {
         <p class="panel__placeholderTitle">读取失败</p>
         <p class="panel__placeholderNote">{{ notice }}</p>
       </div>
+      <p v-else-if="state === 'idle'" class="panel__line">尚未查询，请选择业务夜与楼栋后点击“查询”。</p>
       <div v-else-if="!items.length" class="panel__placeholder">
         <p class="panel__placeholderTitle">这一夜没有返宿记录。</p>
         <p class="panel__placeholderNote">

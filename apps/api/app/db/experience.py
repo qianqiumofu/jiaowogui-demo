@@ -86,6 +86,7 @@ def populate(engine, today: date, tz_name: str = "Asia/Shanghai"):
             student.school_id = f"{grade}S{n:04d}"
             student.display_name = f"合成学生{n:04d}"
             student.college_org_id = COLLEGES[college][0]
+            student.education_level = ("BACHELOR", "MASTER", "DOCTORAL")[class_index % 3]
             student.grade = grade
             student.major = MAJORS[college][class_index % 2]
             student.class_name = f"{grade}级{student.major}1班"

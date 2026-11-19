@@ -1,5 +1,6 @@
 """风险只依据明确规则与正式返宿事实；不读取超时或未确认状态作为触发器。"""
 import secrets
+import hashlib
 from datetime import datetime,timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -35,24 +36,46 @@ def list_events(db,context,status=None):
     if status and status not in ("OPEN","ACKNOWLEDGED","RESOLVED"):raise ApiError(422,"VALIDATION_FAILED","未知风险状态。",{})
     rows=db.scalars(select(RiskEvent).order_by(RiskEvent.created_at.desc(),RiskEvent.id))
     items=[]
+    people={}
     for row in rows:
         if (status and row.status!=status) or not allowed(context,row):continue
         item=view(row)
+        label=directory.label_for(row.student_id)
+        item['school_id'],item['display_name']=label or (row.student_id,row.student_id)
         item['actions']=[{'id':a.id,'actor_user_id':a.actor_user_id,'action':a.action,'note':a.note,'created_at':business_iso(a.created_at)} for a in db.scalars(select(RiskAction).where(RiskAction.event_id==row.id).order_by(RiskAction.created_at,RiskAction.id))]
+        for action in item['actions']:
+            user_id=action['actor_user_id']
+            if user_id not in people:
+                person=identity.person_by_user_id(user_id)
+                people[user_id]=person.display_name if person else user_id
+            action['actor_display_name']=people[user_id]
         items.append(item)
     return {"items":items,"next_cursor":None}
 
 
-def act(db,context,event_id,action,note,at):
+def act(db,context,event_id,action,note,at,idempotency_key=None):
     row=db.get(RiskEvent,event_id,with_for_update=True)
     if row is None or not allowed(context,row):raise ApiError(404,"SUBJECT_NOT_FOUND","事件不存在或不在负责范围。",{})
     if not note.strip() or len(note)>500:raise ApiError(422,"VALIDATION_FAILED","跟进说明需要 1—500 字符。",{})
-    target="ACKNOWLEDGED" if action=="ACK" else "RESOLVED"
-    if row.status==target:return view(row)
+    if action not in ('ACK','FOLLOW_UP','RESOLVE'):
+        raise ApiError(422,'VALIDATION_FAILED','未知风险操作。',{})
+    action_id='ract_'+secrets.token_hex(12)
+    if action=='FOLLOW_UP':
+        if not idempotency_key or not idempotency_key.strip() or len(idempotency_key)>128:
+            raise ApiError(422,'VALIDATION_FAILED','跟进记录必须提供有效幂等键。',{})
+        action_id='ract_'+hashlib.sha256(f'{event_id}:{context.user_id}:{idempotency_key}'.encode()).hexdigest()[:32]
+        previous=db.get(RiskAction,action_id)
+        if previous is not None:
+            if previous.note!=note.strip():raise ApiError(409,'VERSION_CONFLICT','该请求已用于其他跟进内容。',{})
+            return view(row)
+    target='ACKNOWLEDGED' if action in ('ACK','FOLLOW_UP') else 'RESOLVED'
+    if action!='FOLLOW_UP' and row.status==target:return view(row)
     if row.status=="RESOLVED":raise ApiError(409,"VERSION_CONFLICT","事件已解决。",{})
+    if action in ('FOLLOW_UP','RESOLVE') and row.status!='ACKNOWLEDGED':
+        raise ApiError(409,'VERSION_CONFLICT','请先确认接手，再记录跟进或办结。',{})
     row.status=target;row.updated_at=at
-    db.add(RiskAction(id="ract_"+secrets.token_hex(12),event_id=row.id,actor_user_id=context.user_id,action=action,note=note,created_at=at))
-    audit(db,context.user_id,"RISK_"+action,event_id,{"note":note},at);db.commit();return view(row)
+    db.add(RiskAction(id=action_id,event_id=row.id,actor_user_id=context.user_id,action=action,note=note.strip(),created_at=at))
+    audit(db,context.user_id,"RISK_"+action,event_id,{"note":note.strip()},at);db.commit();return view(row)
 
 
 def evaluate_all(db,clock,night):

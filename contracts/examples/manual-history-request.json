@@ -1,0 +1,9 @@
+{
+  "student_id": "stu_synth_0001",
+  "building_id": "bldg_a1",
+  "occurred_at": "2026-11-16T00:40:00+08:00",
+  "evidence": {
+    "note": "白天补填昨夜实际返宿"
+  },
+  "idempotency_key": "synth_manual_history"
+}

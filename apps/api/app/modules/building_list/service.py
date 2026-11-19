@@ -14,15 +14,15 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
-from app.core.clock import is_summary_passed, service_date_of, summary_moment
+from app.core.clock import business_iso, is_summary_passed, service_date_of, summary_moment
 from app.core.config import get_settings
 from app.core.db import get_engine
-from app.core.errors import out_of_scope
+from app.core.errors import ApiError, out_of_scope
 from app.modules.building_list import notify, source
 from app.modules.directory import service as directory
 from app.modules.returns import service as returns
@@ -216,6 +216,7 @@ def write_snapshot(
 ) -> None:
     """24:00 汇总落库；已存在则不覆盖，保证同一晚只有一份基准（幂等）。"""
     payload = {
+        "duty_staff": responsible_staff(building_id, generated_at),
         "items": [
             {
                 "student_id": item["student_id"],
@@ -237,6 +238,66 @@ def write_snapshot(
                 "payload": json.dumps(payload, ensure_ascii=False),
             },
         )
+
+
+def responsible_staff(building_id: str, at: datetime) -> list[dict]:
+    """沿用当前固定楼栋与有效代班并集，不引入包内一人一栋的新规则。"""
+    from app.modules.identity import service as identity, staff_accounts
+    fixed = set(staff_accounts.fixed_staff(building_id))
+    result = []
+    for user_id in sorted(directory.get_duty_staff(building_id, at)):
+        person = identity.person_by_user_id(user_id)
+        if person:
+            result.append({'user_id': user_id, 'display_name': person.display_name,
+                           'kind': 'FIXED' if user_id in fixed else 'SUBSTITUTE'})
+    return result
+
+
+def night_summary(at: datetime, service_day: date | None = None,
+                  park_org_id: str | None = None, building_id: str | None = None) -> dict:
+    current = service_date_of(at)
+    night = service_day or (current if is_summary_passed(at, current) else current - timedelta(days=1))
+    if night > current:
+        raise ApiError(422, 'VALIDATION_FAILED', '不能查询未来业务夜。', {})
+    anchor = summary_moment(night, ZoneInfo(get_settings().business_timezone))
+    with get_engine().connect() as conn:
+        catalog = directory.filter_catalog(conn)
+        if park_org_id and park_org_id not in {p['org_id'] for p in catalog['parks']}:
+            raise ApiError(422, 'VALIDATION_FAILED', '未知宿舍区。', {})
+        if building_id and building_id not in {b['building_id'] for b in catalog['buildings']}:
+            raise ApiError(422, 'VALIDATION_FAILED', '未知楼栋。', {})
+        snapshots = {r['building_id']: r for r in conn.execute(text(
+            'SELECT building_id,payload,generated_at FROM building_list_snapshots WHERE service_date=:night'),
+            {'night': night}).mappings()}
+        dimensions = directory.statistic_students(conn, night)
+        returned = returns.returned_keys(conn, night, night)
+    counts = {}
+    for sid, _ in returned:
+        home = dimensions.get(sid, {}).get('night_building_id')
+        counts[home] = counts.get(home, 0) + 1
+    parks = {p['org_id']: p['name'] for p in catalog['parks']}
+    items = []
+    for building in catalog['buildings']:
+        bid = building['building_id']
+        park = building['park_org_id'] or ''
+        if (building_id and bid != building_id) or (park_org_id and park != park_org_id):
+            continue
+        snapshot = snapshots.get(bid)
+        payload = (snapshot['payload'] or {}) if snapshot else {}
+        if snapshot and 'duty_staff' in payload:
+            staff = payload['duty_staff']; source_kind = 'SNAPSHOT'
+        elif snapshot:
+            staff = []; source_kind = 'UNAVAILABLE'
+        else:
+            staff = responsible_staff(bid, anchor); source_kind = 'LIVE'
+        items.append({'building_id': bid, 'building_name': building['name'],
+            'park_org_id': park, 'park_name': parks.get(park, '未归属'),
+            'summary_status': 'SUMMARIZED' if snapshot else 'PENDING',
+            'summary_generated_at': business_iso(snapshot['generated_at']) if snapshot else None,
+            'headcount': len(payload.get('items', [])) if snapshot else None,
+            'returned_count': counts.get(bid, 0), 'responsible': staff, 'responsible_source': source_kind})
+    return {'service_date': night.isoformat(), 'summary_due_at': business_iso(anchor),
+            'items': items, 'next_cursor': None}
 
 
 def snapshot_is_due(at: datetime, service_day: date | None = None) -> bool:

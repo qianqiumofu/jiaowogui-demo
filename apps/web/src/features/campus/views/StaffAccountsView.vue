@@ -1,31 +1,34 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
+import BuildingPicker from '@/features/campus/components/BuildingPicker.vue'
 import { api } from '@/shared/api/client'
-import type { StaffAccount } from '@/shared/api/types'
+import type { StaffAccount, StatisticsFilters } from '@/shared/api/types'
 import { describeError, useSessionStore } from '@/shared/stores/session'
 
 const session = useSessionStore()
 const items = ref<StaffAccount[]>([])
+const parks = ref<StatisticsFilters['parks']>([])
+const buildings = ref<StatisticsFilters['buildings']>([])
 const loading = ref(true)
 const busy = ref<string | null>(null)
 const notice = ref<{ text: string; bad: boolean } | null>(null)
 
-const draft = ref({ login_name: '', display_name: '', buildings: '' })
+const draft = ref<{ login_name: string; display_name: string; building_ids: string[] }>({
+  login_name: '',
+  display_name: '',
+  building_ids: [],
+})
 const rebindFor = ref<string | null>(null)
-const rebindBuildings = ref('')
-
-function tokens(raw: string): string[] {
-  return raw
-    .split(/[,，\s]+/)
-    .map((value) => value.trim())
-    .filter(Boolean)
-}
+const rebindBuildingIds = ref<string[]>([])
 
 async function load() {
   loading.value = true
   try {
-    items.value = (await api.staffAccounts()).items
+    const [accounts, filters] = await Promise.all([api.staffAccounts(), api.statisticsFilters()])
+    items.value = accounts.items
+    parks.value = filters.parks
+    buildings.value = filters.buildings
   } catch (cause) {
     notice.value = { text: describeError(cause), bad: true }
   } finally {
@@ -44,9 +47,9 @@ async function create() {
     const created = await api.createStaffAccount({
       login_name: draft.value.login_name.trim(),
       display_name: draft.value.display_name.trim(),
-      building_ids: tokens(draft.value.buildings),
+      building_ids: draft.value.building_ids,
     })
-    draft.value = { login_name: '', display_name: '', buildings: '' }
+    draft.value = { login_name: '', display_name: '', building_ids: [] }
     // 初始口令只在这里出现一次，交由园区当面下发。
     notice.value = {
       text: `已创建 ${created.account.login_name}，初始口令 ${created.initial_password}，只显示这一次。`,
@@ -60,11 +63,16 @@ async function create() {
   }
 }
 
+function openRebind(item: StaffAccount) {
+  rebindFor.value = item.id
+  rebindBuildingIds.value = [...item.building_ids]
+}
+
 async function rebind(id: string) {
   busy.value = id
   notice.value = null
   try {
-    await api.updateStaffAccount(id, { building_ids: tokens(rebindBuildings.value) })
+    await api.updateStaffAccount(id, { building_ids: rebindBuildingIds.value })
     rebindFor.value = null
     await load()
   } catch (cause) {
@@ -103,6 +111,20 @@ async function disable(id: string) {
   }
 }
 
+async function enable(id: string) {
+  busy.value = id
+  notice.value = null
+  try {
+    const account = await api.enableStaffAccount(id)
+    notice.value = { text: `已启用 ${account.login_name}，可重新登录。`, bad: false }
+    await load()
+  } catch (cause) {
+    fail(cause)
+  } finally {
+    busy.value = null
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -132,23 +154,30 @@ onMounted(load)
             <span v-for="building in item.building_ids" :key="building" class="staff__building">{{ building }}</span>
           </div>
           <div v-if="rebindFor === item.id" class="staff__rebind">
-            <input v-model="rebindBuildings" placeholder="用空格或逗号分隔楼栋编号" />
-            <button
-              class="resv__primary"
-              type="button"
+            <BuildingPicker
+              v-model="rebindBuildingIds"
+              :parks="parks"
+              :buildings="buildings"
               :disabled="busy === item.id"
-              @click="rebind(item.id)"
-            >
-              保存
-            </button>
-            <button class="resv__ghost" type="button" @click="rebindFor = null">取消</button>
+            />
+            <div class="staff__rebind-actions">
+              <button
+                class="resv__primary"
+                type="button"
+                :disabled="busy === item.id || !rebindBuildingIds.length"
+                @click="rebind(item.id)"
+              >
+                保存
+              </button>
+              <button class="resv__ghost" type="button" @click="rebindFor = null">取消</button>
+            </div>
           </div>
           <div v-else class="staff__actions">
             <button
               class="resv__ghost"
               type="button"
               :disabled="busy !== null"
-              @click="((rebindFor = item.id), (rebindBuildings = item.building_ids.join(', ')))"
+              @click="openRebind(item)"
             >
               改绑楼栋
             </button>
@@ -161,12 +190,22 @@ onMounted(load)
               重置口令
             </button>
             <button
+              v-if="item.status === 'ACTIVE'"
               class="resv__ghost"
               type="button"
-              :disabled="busy !== null || item.status !== 'ACTIVE'"
+              :disabled="busy !== null"
               @click="disable(item.id)"
             >
               停用
+            </button>
+            <button
+              v-else
+              class="resv__ghost"
+              type="button"
+              :disabled="busy !== null"
+              @click="enable(item.id)"
+            >
+              启用
             </button>
           </div>
         </li>
@@ -188,15 +227,20 @@ onMounted(load)
           <span class="resv__label">显示名</span>
           <input v-model="draft.display_name" placeholder="例如 刘阿姨" required />
         </label>
-        <label class="resv__field resv__field--wide">
+        <div class="resv__field resv__field--wide">
           <span class="resv__label">固定管理楼栋</span>
-          <input v-model="draft.buildings" placeholder="bldg_a2" required />
-        </label>
+          <BuildingPicker
+            v-model="draft.building_ids"
+            :parks="parks"
+            :buildings="buildings"
+            :disabled="busy !== null"
+          />
+        </div>
         <div class="resv__actions">
           <button
             class="resv__primary"
             type="submit"
-            :disabled="busy !== null || !session.can('staff_account:create')"
+            :disabled="busy !== null || !draft.building_ids.length || !session.can('staff_account:create')"
           >
             {{ busy === 'create' ? '提交中' : '创建并生成初始口令' }}
           </button>
@@ -205,3 +249,14 @@ onMounted(load)
     </section>
   </div>
 </template>
+
+<style scoped>
+.staff__rebind {
+  flex-direction: column;
+  align-items: stretch;
+}
+.staff__rebind-actions {
+  display: flex;
+  gap: 8px;
+}
+</style>

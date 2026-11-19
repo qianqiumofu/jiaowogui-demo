@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.errors import not_implemented
 from app.modules.authorization.dependencies import require
-from app.modules.identity.schemas import SessionContext
+from app.modules.identity.schemas import Role, SessionContext
 from app.modules.reports import readmodel
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -29,6 +29,14 @@ ServiceDate = Annotated[
 ]
 
 
+def report_scope_note(context: SessionContext) -> str:
+    if context.active_role is Role.AUTH_ADMIN:
+        return "统计全校授权范围内的学生。"
+    if context.active_role is Role.COLLEGE_ADMIN:
+        return "只统计获授学院范围内的学生。"
+    return readmodel.SCOPE_NOTE_COUNSELOR
+
+
 @router.get("/daily")
 def daily(guarded: ReadDep, db: SessionDep, request: Request, service_date: ServiceDate = None) -> dict:
     clock = request.app.state.clock
@@ -37,7 +45,7 @@ def daily(guarded: ReadDep, db: SessionDep, request: Request, service_date: Serv
     items = readmodel.night_rows(
         db, clock, service_date=night, student_ids=readmodel.student_ids_of(guarded)
     )
-    return readmodel.daily_view(items, service_date=night, now=moment)
+    return readmodel.daily_view(items, service_date=night, now=moment, scope_note=report_scope_note(guarded))
 
 
 @router.get("/weekly")
@@ -48,7 +56,7 @@ def weekly(guarded: ReadDep, db: SessionDep, request: Request, service_date: Ser
     items = readmodel.range_rows(
         db, clock, start=start, end=end, student_ids=readmodel.student_ids_of(guarded)
     )
-    return readmodel.weekly_view(items, start=start, end=end, now=moment)
+    return readmodel.weekly_view(items, start=start, end=end, now=moment, scope_note=report_scope_note(guarded))
 
 
 @router.get("/subscriptions")
@@ -65,3 +73,30 @@ class SubscriptionRequest(BaseModel):
 def update_subscriptions(payload:SubscriptionRequest,guarded:SubscribeDep,db:SessionDep,request:Request):
     from app.modules.reports.subscriptions import save
     return save(db,guarded.user_id,payload.daily,payload.weekly,request.app.state.clock.now())
+
+
+from app.modules.reports import school_statistics
+
+StatisticsDep = Annotated[SessionContext, Depends(require('report:statistics'))]
+
+
+def statistics_filters(college_org_id: str = '', grade: str = '', park_org_id: str = '', building_id: str = ''):
+    return {'college_org_id': college_org_id, 'grade': grade, 'park_org_id': park_org_id, 'building_id': building_id}
+
+
+@router.get('/overview')
+def school_overview(guarded: StatisticsDep, db: SessionDep, request: Request,
+                    filters: Annotated[dict, Depends(statistics_filters)], period: str = 'DAY'):
+    return school_statistics.overview(db, guarded, request.app.state.clock, period, filters)
+
+
+@router.get('/overview/options')
+def school_options(guarded: StatisticsDep, db: SessionDep):
+    return school_statistics.options(db.connection())
+
+
+@router.get('/overview/students')
+def school_students(guarded: StatisticsDep, db: SessionDep, request: Request,
+                    filters: Annotated[dict, Depends(statistics_filters)], dataset: str, period: str = 'DAY',
+                    cursor: str | None = None, limit: Annotated[int, Query(ge=1, le=200)] = 50):
+    return school_statistics.students(db, guarded, request.app.state.clock, period, filters, dataset, cursor, limit)

@@ -1,4 +1,5 @@
 import type { components } from './schema'
+import { readCsvDownload } from './csvDownload'
 import type {
   AllowedActions,
   ApiErrorBody,
@@ -66,7 +67,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   } catch {
     throw new ApiRequestError(
       'NETWORK_UNAVAILABLE',
-      '连不上后端，请确认 API 已在 8000 端口启动。',
+      '连不上后端，请确认演示环境的 API 已在 8001 端口启动。',
       '',
     )
   }
@@ -92,7 +93,7 @@ function queryString(params: Record<string, string | undefined>): string {
 }
 
 // CSV 不是 JSON，走同一条鉴权但单独解析；失败时后端仍按契约返回错误信封。
-async function downloadCsv(path: string): Promise<{ fileName: string; text: string }> {
+async function downloadCsv(path: string): Promise<{ fileName: string; blob: Blob }> {
   const headers = new Headers({ Accept: 'text/csv' })
   const token = readToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -101,11 +102,11 @@ async function downloadCsv(path: string): Promise<{ fileName: string; text: stri
   try {
     response = await fetch(`${BASE}${path}`, { headers })
   } catch {
-    throw new ApiRequestError('NETWORK_UNAVAILABLE', '连不上后端，请确认 API 已在 8000 端口启动。', '')
+    throw new ApiRequestError('NETWORK_UNAVAILABLE', '连不上后端，请确认演示环境的 API 已在 8001 端口启动。', '')
   }
 
-  const text = await response.text()
   if (!response.ok) {
+    const text = await response.text()
     let body: Partial<ApiErrorBody> = {}
     try {
       body = JSON.parse(text) as Partial<ApiErrorBody>
@@ -119,8 +120,7 @@ async function downloadCsv(path: string): Promise<{ fileName: string; text: stri
       body.details ?? {},
     )
   }
-  const match = /filename="([^"]+)"/.exec(response.headers.get('content-disposition') ?? '')
-  return { fileName: match?.[1] ?? 'export.csv', text }
+  return readCsvDownload(response)
 }
 
 export const api = {
@@ -201,6 +201,8 @@ export const api = {
     request<StaffAccountSecret>(`/staff-accounts/${id}/reset-password`, { method: 'POST' }),
   disableStaffAccount: (id: string) =>
     request<StaffAccount>(`/staff-accounts/${id}/disable`, { method: 'POST' }),
+  enableStaffAccount: (id: string) =>
+    request<StaffAccount>(`/staff-accounts/${id}/enable`, { method: 'POST' }),
   buildingTonight: (buildingId: string) =>
     request<BuildingTonight>(`/buildings/${buildingId}/tonight`),
   inbox: (unreadOnly = false) =>
@@ -266,6 +268,7 @@ export const api = {
   saveSubscription: (body: components['schemas']['ReportSubscription']) => request<components['schemas']['ReportSubscription']>('/reports/subscriptions', { method: 'PUT', body: JSON.stringify(body) }),
   riskList: (status = '') => request<components['schemas']['RiskEventList']>(`/risk-events${status ? `?status=${status}` : ''}`),
   actRisk: (id: string, action: 'ack' | 'resolve', note: string) => request<components['schemas']['RiskEvent']>(`/risk-events/${id}/${action}`, {method: 'POST', body: JSON.stringify({note})}),
+  followUpRisk: (id: string, note: string, idempotencyKey: string) => request<components['schemas']['RiskEvent']>(`/risk-events/${id}/follow-up`, {method: 'POST', body: JSON.stringify({note, idempotency_key: idempotencyKey})}),
   riskPolicy: () => request<components['schemas']['RiskPolicy']>('/risk-policy'),
   saveRiskPolicy: (body: components['schemas']['RiskPolicy']) => request<components['schemas']['RiskPolicy']>('/risk-policy', {method: 'PUT', body: JSON.stringify(body)}),
   duties: () => request<components['schemas']['DutyAssignmentList']>('/duty-assignments'),
@@ -275,6 +278,8 @@ export const api = {
   statistics: (params: Record<string, string | undefined> = {}) =>
     request<StatisticsResult>(`/statistics${queryString(params)}`),
   statisticsFilters: () => request<StatisticsFilters>('/statistics/filters'),
+  campusNightSummary: (params: Record<string, string>) => request<components['schemas']['CampusNightSummary']>(`/campus/night-summary${queryString(params)}`),
+  campusQuickStatistics: (params: Record<string, string>) => request<components['schemas']['SchoolOverview']>(`/statistics/quick${queryString(params)}`),
   createExport: (params: Record<string, string | undefined>, idempotencyKey?: string) =>
     request<ExportJob>('/exports', {
       method: 'POST',
@@ -283,7 +288,11 @@ export const api = {
   myExports: () => request<ListResult<ExportJob>>('/exports'),
   exportJob: (exportId: string) => request<ExportJob>(`/exports/${exportId}`),
   downloadExport: (exportId: string) => downloadCsv(`/exports/${exportId}/download`),
+  deleteExport: (exportId: string) => request<{ export_id: string; deleted: boolean }>(`/exports/${exportId}`, { method: 'DELETE' }),
   clock: () => request<ClockState>('/demo/clock'),
+  schoolOverview: (period: 'DAY' | 'WEEK' | 'MONTH') => request<components['schemas']['SchoolOverview']>(`/reports/overview?period=${period}`),
+  schoolStatisticsOptions: () => request<StatisticsFilters>('/reports/overview/options'),
+  schoolStatisticsStudents: (params: Record<string, string | undefined>) => request<components['schemas']['SchoolStatisticsStudentList']>(`/reports/overview/students${queryString(params)}`),
   setClock: (offsetMinutes: number) =>
     request<ClockState>('/demo/clock', {
       method: 'POST',

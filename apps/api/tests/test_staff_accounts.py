@@ -58,6 +58,9 @@ def test_only_campus_reaches_account_endpoints(client, clean_db) -> None:
         created = client.post(f"{API}/staff-accounts", json=NEW_ACCOUNT, headers=auth(token))
         assert created.status_code == 403, login_name
         assert created.json()["details"]["action"].startswith("staff_account:")
+        enabled = client.post(f"{API}/staff-accounts/usr_staff_x/enable", headers=auth(token))
+        assert enabled.status_code == 403, login_name
+        assert enabled.json()["details"]["action"] == "staff_account:enable"
 
 
 def test_login_name_cannot_collide_with_seed_or_existing_account(client, clean_db) -> None:
@@ -164,6 +167,27 @@ def test_disable_kills_live_session_and_blocks_login(client, clean_db) -> None:
     )
     assert again.status_code == 403
     assert again.json()["code"] == "ACCOUNT_DISABLED"
+
+
+def test_enable_restores_disabled_account_and_login(client, clean_db) -> None:
+    campus = token_for(client, "campus")
+    created = create(client, campus)
+    account_id = created["account"]["id"]
+    client.post(f"{API}/staff-accounts/{account_id}/disable", headers=auth(campus))
+
+    enabled = client.post(f"{API}/staff-accounts/{account_id}/enable", headers=auth(campus))
+    assert enabled.status_code == 200, enabled.text
+    assert enabled.json()["status"] == "ACTIVE"
+    assert enabled.json()["disabled_at"] is None
+    # 楼栋范围沿用账号当前绑定，启用不改绑。
+    assert enabled.json()["building_ids"] == ["bldg_a2"]
+
+    login = client.post(
+        f"{API}/auth/mock-login",
+        json={"login_name": "dorm_a2", "password": created["initial_password"]},
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["session"]["scope"]["building_ids"] == ["bldg_a2"]
 
 
 def test_staff_account_cannot_read_reservations_before_directory_lands(client, clean_db, monkeypatch) -> None:

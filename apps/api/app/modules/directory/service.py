@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from sqlalchemy import text
 
@@ -208,7 +210,7 @@ def get_contact(student_id: str, at: datetime) -> dict | None:
 def statistic_students(conn, night: date) -> dict[str, dict]:
     """目录拥有的统计维度，不让消费者自己连接目录表。"""
     rows = conn.execute(text("""
-        SELECT s.student_id, s.college_org_id, s.gender, s.grade AS night_grade,
+        SELECT s.student_id, s.college_org_id, s.gender, s.education_level, s.grade AS night_grade,
                s.grade AS enrolled_grade, h.building_id AS night_building_id,
                c.building_id AS current_building_id
         FROM students s
@@ -236,6 +238,32 @@ def students_in_colleges(college_ids):
     if not college_ids:return []
     with get_engine().connect() as conn:
         return list(conn.execute(text("SELECT student_id FROM students WHERE college_org_id=ANY(:ids) ORDER BY student_id"),{"ids":college_ids}).scalars())
+
+
+def scope_facets(conn, student_ids):
+    """给定学生集合，返回他们当前住宿涉及的学院/片区/楼栋/年级/培养层次。
+
+    只用于把筛选目录收窄到调用者权限范围内；范围外的组织结构不出现在下拉里。
+    培养层次为空的旧档案不计入层次选项，但仍计入「全部」。
+    """
+    facets = {"college_org_ids": set(), "park_org_ids": set(), "building_ids": set(), "grades": set(), "education_levels": set()}
+    if not student_ids:
+        return facets
+    rows = conn.execute(text("""
+        SELECT DISTINCT s.college_org_id, s.grade, s.education_level,
+               res.building_id, b.campus_org_id AS park_org_id
+        FROM students s
+        LEFT JOIN residences res ON res.student_id=s.student_id AND res.valid_to IS NULL
+        LEFT JOIN buildings b ON b.building_id=res.building_id
+        WHERE s.student_id=ANY(:ids)
+    """), {"ids": list(student_ids)}).mappings()
+    for r in rows:
+        if r["college_org_id"]: facets["college_org_ids"].add(r["college_org_id"])
+        if r["park_org_id"]: facets["park_org_ids"].add(r["park_org_id"])
+        if r["building_id"]: facets["building_ids"].add(r["building_id"])
+        if r["grade"]: facets["grades"].add(r["grade"])
+        if r["education_level"]: facets["education_levels"].add(r["education_level"])
+    return facets
 
 
 def student_directory(context, filters=None):
@@ -279,7 +307,24 @@ def set_responsibilities(conn, user_id, student_ids, at):
         conn.execute(text("INSERT INTO counselor_assignments(assignment_id,counselor_user_id,student_id,valid_from) VALUES (:id,:u,:s,:n)"),{"id":"ca_"+secrets.token_hex(10),"u":user_id,"s":sid,"n":night})
 
 
+_label_snapshot: ContextVar[dict | None] = ContextVar('directory_label_snapshot', default=None)
+
+
+@contextmanager
+def prefetched_labels(conn):
+    """当前领域调用内批量读取标签；退出即释放，不跨请求缓存个人数据。"""
+    labels = {r[0]: (r[1], r[2]) for r in conn.execute(text('SELECT student_id,school_id,display_name FROM students'))}
+    token = _label_snapshot.set(labels)
+    try:
+        yield
+    finally:
+        _label_snapshot.reset(token)
+
+
 def label_for(student_id):
+    snapshot = _label_snapshot.get()
+    if snapshot is not None:
+        return snapshot.get(student_id)
     with get_engine().connect() as conn:
         row=conn.execute(text("SELECT school_id,display_name FROM students WHERE student_id=:s"),{"s":student_id}).first()
     return tuple(row) if row else None
@@ -325,6 +370,7 @@ _ENROLLED_RANGE_SQL = text(
            res.building_id,
            s.college_org_id,
            s.gender,
+           s.education_level,
            s.grade,
            s.grade AS grade_key
     FROM residences res
@@ -343,6 +389,7 @@ _ENROLLED_NIGHT_SQL = text(
            res.building_id,
            s.college_org_id,
            s.gender,
+           s.education_level,
            s.grade,
            s.grade AS grade_key
     FROM residences res
@@ -387,7 +434,7 @@ def enrolled_night(conn,night):
 
 
 def filter_catalog(conn):
-    return {"colleges":[dict(r) for r in conn.execute(_COLLEGES_SQL).mappings()],"parks":[dict(r) for r in conn.execute(_PARKS_SQL).mappings()],"buildings":[dict(r) for r in conn.execute(_BUILDINGS_SQL).mappings()],"grades":list(conn.execute(_GRADES_SQL).scalars()),"genders":["MALE","FEMALE"],"return_sources":["QR","MANUAL"]}
+    return {"colleges":[dict(r) for r in conn.execute(_COLLEGES_SQL).mappings()],"parks":[dict(r) for r in conn.execute(_PARKS_SQL).mappings()],"buildings":[dict(r) for r in conn.execute(_BUILDINGS_SQL).mappings()],"grades":list(conn.execute(_GRADES_SQL).scalars()),"education_levels":["BACHELOR","MASTER","DOCTORAL"],"genders":["MALE","FEMALE"],"return_sources":["QR","MANUAL"]}
 
 
 def return_labels(conn,night):

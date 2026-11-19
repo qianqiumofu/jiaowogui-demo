@@ -151,6 +151,15 @@ def disable(session: Session, clock: Clock, account_id: str) -> User:
     return account
 
 
+def enable(session: Session, account_id: str) -> User:
+    """恢复已停用的工号账号为在用，清除停用时间；楼栋范围沿用账号当前绑定。"""
+    account = get_account(session, account_id)
+    account.status = "ACTIVE"
+    account.disabled_at = None
+    session.commit()
+    return account
+
+
 def _open_session() -> SqlSession:
     """统一登录入口在没有命中种子账号时才连库，数据库未启动按 503 处理。"""
     from sqlalchemy.orm import Session as SqlSession

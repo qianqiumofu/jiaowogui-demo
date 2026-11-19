@@ -54,7 +54,13 @@ def test_thousand_student_experience(postgres_schema, client):
         assert response.status_code == 403
         counselor = auth(token_for(client, "counselor_2_1"))
         assert len(client.get(f"{API}/directory/students", headers=counselor).json()["items"]) == 50
-        assert client.get(f"{API}/statistics", headers=counselor).status_code == 403
+        scoped = client.get(f"{API}/statistics", headers=counselor)
+        assert scoped.status_code == 200, scoped.text
+        assert scoped.json()["totals"]["enrolled"] == 50
+        campus = auth(token_for(client, "campus"))
+        whole = client.get(f"{API}/statistics", headers=campus)
+        assert whole.status_code == 200, whole.text
+        assert whole.json()["totals"]["enrolled"] == 1000
         assert client.get(f"{API}/management/grants", headers=counselor).status_code == 403
     finally:
         reset(engine)

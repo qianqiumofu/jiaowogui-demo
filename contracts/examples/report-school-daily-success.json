@@ -1,0 +1,42 @@
+{
+  "template": "DAILY_REPORT",
+  "service_date": "2026-11-15",
+  "night_window": [
+    "2026-11-16T00:00:00+08:00",
+    "2026-11-16T06:00:00+08:00"
+  ],
+  "generated_at": "2026-11-16T08:30:00+08:00",
+  "scope_note": "统计全校授权范围内的学生。",
+  "totals": {
+    "students": 2,
+    "nights": 1,
+    "unconfirmed": 1
+  },
+  "items": [
+    {
+      "student_id": "stu_synth_0001",
+      "school_id": "2023S0001",
+      "display_name": "张三",
+      "planned_return_at": "2026-11-16T00:40:00+08:00",
+      "status": "FULFILLED"
+    },
+    {
+      "student_id": "stu_synth_0002",
+      "school_id": "目录未同步",
+      "display_name": "学生 stu_synth_0002",
+      "planned_return_at": "2026-11-16T01:10:00+08:00",
+      "status": "ACTIVE"
+    },
+    {
+      "student_id": "stu_synth_0003",
+      "school_id": "目录未同步",
+      "display_name": "学生 stu_synth_0003",
+      "planned_return_at": "2026-11-16T02:05:00+08:00",
+      "status": "CANCELLED"
+    }
+  ],
+  "caliber_notes": [
+    "取消的夜晚不计入任何统计。",
+    "未确认返宿只表示当晚没有匹配到通行记录，不代表已经证明未归，系统不据此提醒、催办或升级。"
+  ]
+}

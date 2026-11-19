@@ -7,6 +7,82 @@ info:
 servers:
 - url: http://localhost:8000/api/v1
 paths:
+  /agent/status:
+    get:
+      summary: 报告助手可用状态
+      description: 动作 agent:use；仅辅导员、思政、学院负责人。未配置模型时返回 enabled=false，不外呼；不返回地址或凭据。
+      operationId: get_report_agent_status
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 当前状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentStatus'
+        '403':
+          description: 无动作权限或负责范围未解析
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /agent/reports:
+    post:
+      summary: 请求受控报告助手
+      description: 动作 agent:use，工具执行还校验 statistics:read。每次工具重新校验会话及范围，仅聚合统计；服务端生成有来源的数字，模型不得自行写数字结论。无业务写入/通知，无跨请求聊天存储；审计仅保留工具依据与错误码。默认模型关闭，返回 503 AGENT_UNAVAILABLE。
+      operationId: run_report_agent
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+      responses:
+        '200':
+          description: 服务端按已查询来源生成的报告草稿
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentReport'
+        '403':
+          description: 未授权或范围未解析
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: AGENT_SCOPE_CHANGED，重新查询前负责范围已变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 请求字段不合法
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: AGENT_MODEL_ERROR / AGENT_INVALID_RESPONSE / AGENT_TOOL_REJECTED，模型错误或受控工具调用非法
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: AGENT_UNAVAILABLE，模型未启用或配置不完整
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '504':
+          description: AGENT_TIMEOUT / AGENT_LIMIT_REACHED，模型超时或执行达到限额
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   # 千人体验仅增加合成账号样例；登录和授权字段兼容，列表仍为既有演示账号数组。
   /auth/demo-accounts:
     get:
@@ -2294,6 +2370,99 @@ components:
         type: string
         format: date
   schemas:
+    AgentStatus:
+      type: object
+      required: [enabled, provider, message]
+      properties:
+        enabled:
+          type: boolean
+        provider:
+          type: string
+          enum: [DISABLED, OPENAI_COMPATIBLE]
+        message:
+          type: string
+    AgentRequest:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        previous_messages:
+          type: array
+          maxItems: 4
+          items:
+            type: string
+            minLength: 1
+            maxLength: 1000
+    AgentSource:
+      type: object
+      required: [source_id, period, window, date_from, date_to, totals]
+      properties:
+        source_id:
+          type: string
+        period:
+          type: string
+          enum: [DAY, WEEK, MONTH]
+        window:
+          type: string
+          enum: [CURRENT, PREVIOUS]
+        date_from:
+          type: string
+          format: date
+        date_to:
+          type: string
+          format: date
+        totals:
+          type: object
+          required: [people, nights, returns, qr_returns, manual_returns, enrolled]
+          additionalProperties:
+            type: integer
+            minimum: 0
+          properties:
+            people:
+              type: integer
+            nights:
+              type: integer
+            returns:
+              type: integer
+            qr_returns:
+              type: integer
+            manual_returns:
+              type: integer
+            enrolled:
+              type: integer
+    AgentReport:
+      type: object
+      required: [run_id, answer, sources, tool_steps, generated_at, notes]
+      properties:
+        run_id:
+          type: string
+        answer:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentSource'
+        tool_steps:
+          type: array
+          items:
+            type: object
+            required: [tool, source_id]
+            properties:
+              tool:
+                type: string
+              source_id:
+                type: string
+        generated_at:
+          type: string
+          format: date-time
+        notes:
+          type: array
+          items:
+            type: string
     Role:
       type: string
       enum:

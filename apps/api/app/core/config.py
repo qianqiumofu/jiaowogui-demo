@@ -3,6 +3,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+from pydantic import SecretStr
+from typing import Literal
 
 API_ROOT = Path(__file__).resolve().parents[2]
 
@@ -23,6 +25,18 @@ class Settings(BaseSettings):
     demo_clock_file: str = ".demo_clock.json"
     # 仅模拟统一身份的种子账号；园区注册的工号账号各有独立口令（R19）。
     demo_login_password: str = "demo1234"
+
+    # 报告助手仅接合成数据；未申请模型 API 时完全关闭，不外呼。
+    agent_provider: Literal['DISABLED', 'OPENAI_COMPATIBLE'] = 'DISABLED'
+    agent_base_url: str = ''
+    agent_model: str = ''
+    agent_api_key: SecretStr = SecretStr('')
+    agent_timeout_seconds: float = Field(default=20, gt=0, le=60)
+    agent_total_seconds: float = Field(default=60, gt=0, le=180)
+    agent_max_rounds: int = Field(default=4, ge=1, le=8)
+    agent_max_tool_calls: int = Field(default=6, ge=1, le=12)
+    agent_max_response_bytes: int = Field(default=1048576, ge=1024, le=2097152)
+    agent_max_output_tokens: int = Field(default=1000, ge=128, le=4096)
 
     # 通知调度与风险提示的取值全部是「Demo 工程默认」，正式值待学校确认（基线 R16 行）。
     # 时间一律 HH:MM，按业务时区解释；周期任务只能由 worker 读取，不在请求里判定。

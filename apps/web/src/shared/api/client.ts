@@ -124,6 +124,8 @@ async function downloadCsv(path: string): Promise<{ fileName: string; blob: Blob
 }
 
 export const api = {
+  reportAgentStatus: () => request<components['schemas']['AgentStatus']>('/agent/status'),
+  runReportAgent: (message: string, previousMessages: string[] = []) => request<components['schemas']['AgentReport']>('/agent/reports', { method: 'POST', body: JSON.stringify({ message, previous_messages: previousMessages }) }),
   demoAccounts: () => request<DemoAccount[]>('/auth/demo-accounts'),
   login: async (loginName: string, password: string) => {
     const session = await request<AuthSession>('/auth/mock-login', {

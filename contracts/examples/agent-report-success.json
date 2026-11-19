@@ -1,0 +1,8 @@
+{
+  "run_id": "agent_synth_report",
+  "answer": "[S1] 2026-11-16 至 2026-11-18（3 个业务夜）：实际晚归 1 人、2 夜、返宿 2 次；扫码 1 次，人工补录 1 次，在册 6 人。",
+  "sources": [{"source_id":"S1","period":"WEEK","window":"CURRENT","date_from":"2026-11-16","date_to":"2026-11-18","totals":{"people":1,"nights":2,"returns":2,"qr_returns":1,"manual_returns":1,"enrolled":6}}],
+  "tool_steps": [{"tool":"read_period_statistics","source_id":"S1"}],
+  "generated_at": "2026-11-19T18:00:00+08:00",
+  "notes": ["仅统计当前账号授权范围；申请、领码、未确认返宿均不算正式晚归。","未确认返宿不代表已证明未归，不产生超时提醒。","草稿数字和区间由服务端按查询依据生成；模型只选择工具和来源。"]
+}

@@ -27,6 +27,7 @@ const routes: RouteRecordRaw[] = [
     path: '/app',
     component: AppShell,
     children: [
+      { path: 'counselor/assistant', name: 'report-assistant', component: () => import('@/features/counselor/views/ReportAssistantView.vue'), meta: { roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN'], label: '报告助手', action: 'agent:use' } },
       { path: 'management', name: 'leadership', component: () => import('@/features/management/views/LeadershipView.vue'), meta: { roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN', 'CAMPUS'], label: '管理工作台' } },
       { path: '', name: 'home', redirect: () => ({ name: homeTarget() }) },
       {

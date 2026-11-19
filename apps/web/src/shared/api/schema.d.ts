@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    "/agent/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 报告助手可用状态
+         * @description 动作 agent:use；仅辅导员、思政、学院负责人。未配置模型时返回 enabled=false，不外呼；不返回地址或凭据。
+         */
+        get: operations["get_report_agent_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 请求受控报告助手
+         * @description 动作 agent:use，工具执行还校验 statistics:read。每次工具重新校验会话及范围，仅聚合统计；服务端生成有来源的数字，模型不得自行写数字结论。无业务写入/通知，无跨请求聊天存储；审计仅保留工具依据与错误码。默认模型关闭，返回 503 AGENT_UNAVAILABLE。
+         */
+        post: operations["run_report_agent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/demo-accounts": {
         parameters: {
             query?: never;
@@ -2935,6 +2975,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AgentStatus: {
+            enabled: boolean;
+            /** @enum {string} */
+            provider: "DISABLED" | "OPENAI_COMPATIBLE";
+            message: string;
+        };
+        AgentRequest: {
+            message: string;
+            previous_messages?: string[];
+        };
+        AgentSource: {
+            source_id: string;
+            /** @enum {string} */
+            period: "DAY" | "WEEK" | "MONTH";
+            /** @enum {string} */
+            window: "CURRENT" | "PREVIOUS";
+            /** Format: date */
+            date_from: string;
+            /** Format: date */
+            date_to: string;
+            totals: {
+                people: number;
+                nights: number;
+                returns: number;
+                qr_returns: number;
+                manual_returns: number;
+                enrolled: number;
+            } & {
+                [key: string]: number;
+            };
+        };
+        AgentReport: {
+            run_id: string;
+            answer: string;
+            sources: components["schemas"]["AgentSource"][];
+            tool_steps: {
+                tool: string;
+                source_id: string;
+            }[];
+            /** Format: date-time */
+            generated_at: string;
+            notes: string[];
+        };
         /**
          * @description 基础学生/教师身份由学校确认；COUNSELOR、IDEOLOGY、COLLEGE_ADMIN、CAMPUS 由上级部门授予；AUTH_ADMIN 仅由合成启动配置提供。
          * @enum {string}
@@ -3887,6 +3970,113 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_report_agent_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentStatus"];
+                };
+            };
+            /** @description 无动作权限或负责范围未解析 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    run_report_agent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRequest"];
+            };
+        };
+        responses: {
+            /** @description 服务端按已查询来源生成的报告草稿 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReport"];
+                };
+            };
+            /** @description 未授权或范围未解析 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description AGENT_SCOPE_CHANGED，重新查询前负责范围已变化 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 请求字段不合法 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description AGENT_MODEL_ERROR / AGENT_INVALID_RESPONSE / AGENT_TOOL_REJECTED，模型错误或受控工具调用非法 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description AGENT_UNAVAILABLE，模型未启用或配置不完整 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description AGENT_TIMEOUT / AGENT_LIMIT_REACHED，模型超时或执行达到限额 */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     put_reports_subscriptions: {
         parameters: {
             query?: never;

@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.demo import router as demo_router
+from app.modules.agent.router import router as agent_router
 from app.modules.access.router import router as access_router
 from app.modules.authorization.router import router as authorization_router
 from app.modules.building_list.router import router as building_list_router
@@ -28,6 +29,7 @@ api_router.include_router(authorization_router)
 api_router.include_router(reservation_router)
 api_router.include_router(risk_router)
 api_router.include_router(reports_router)
+api_router.include_router(agent_router)
 api_router.include_router(notification_router)
 api_router.include_router(demo_router)
 

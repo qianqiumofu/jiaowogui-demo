@@ -18,6 +18,7 @@ ACTIONS: dict[str, set[Role]] = {
     # A：辅导员端
     "return:read_scoped": {Role.COUNSELOR, Role.DORM_MANAGER},
     "report:read": {Role.COUNSELOR},
+    "agent:use": {Role.COUNSELOR, Role.IDEOLOGY, Role.COLLEGE_ADMIN},
     "report:subscribe": {Role.COUNSELOR},
     "risk:read": {Role.COUNSELOR, Role.DORM_MANAGER, Role.CAMPUS},
     "risk:ack": {Role.COUNSELOR, Role.DORM_MANAGER},

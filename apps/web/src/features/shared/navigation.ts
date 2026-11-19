@@ -9,6 +9,7 @@ export interface NavItem {
 }
 
 const ITEMS: Array<NavItem & { roles: Role[]; action?: string }> = [
+  { to: '/app/counselor/assistant', name: 'report-assistant', label: '报告助手', roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN'], action: 'agent:use' },
   { to: '/app/management', name: 'leadership', label: '管理工作台', roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN', 'CAMPUS'] },
   { to: '/app/student/reservation', name: 'student-reservation', label: '晚归预约', roles: ['STUDENT'], action: 'reservation:create', stage: 'M2' },
   { to: '/app/student/records', name: 'student-records', label: '我的记录', roles: ['STUDENT'], stage: 'M2' },

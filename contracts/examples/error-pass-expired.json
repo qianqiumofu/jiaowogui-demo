@@ -1,0 +1,9 @@
+{
+  "code": "PASS_EXPIRED",
+  "message": "二维码已超过有效期，必须重新核验领码。",
+  "request_id": "req_synth_0007",
+  "details": {
+    "pass_id": "pass_synth_0002",
+    "expires_at": "2026-11-16T00:55:00+08:00"
+  }
+}

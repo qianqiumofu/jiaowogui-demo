@@ -8,6 +8,10 @@ class Role(str, Enum):
     DORM_MANAGER = "DORM_MANAGER"
     COUNSELOR = "COUNSELOR"
     CAMPUS = "CAMPUS"
+    TEACHER = "TEACHER"
+    IDEOLOGY = "IDEOLOGY"
+    COLLEGE_ADMIN = "COLLEGE_ADMIN"
+    AUTH_ADMIN = "AUTH_ADMIN"
 
 
 class AccountSource(str, Enum):
@@ -29,6 +33,9 @@ class Person(BaseModel):
     email: str | None = None
     student_id: str | None = None
     home_building_ids: list[str] = Field(default_factory=list)
+    identity_types: list[str] = Field(default_factory=list)
+    college_org_id: str | None = None
+    position_title: str = ""
 
 
 class StaffAccountCreate(BaseModel):
@@ -53,3 +60,6 @@ class SessionContext(BaseModel):
     expires_at: str
     account_source: AccountSource
     email: str | None = None
+    identity_types: list[str] = Field(default_factory=list)
+    college_org_id: str | None = None
+    position_title: str = ""

@@ -18,6 +18,8 @@ const scopeHint = computed(() => {
   if (scope.building_ids?.length) return `值班楼栋：${scope.building_ids.join('、')}`
   if (scope.resolved_by?.startsWith('pending:')) return '范围待目录同步'
   if (scope.student_ids) return `负责学生：${scope.student_ids.length} 人`
+  if (session.activeRole === 'TEACHER') return '本人身份信息'
+  if (session.activeRole === 'AUTH_ADMIN') return '全校权限配置范围'
   return '全校授权范围'
 })
 </script>

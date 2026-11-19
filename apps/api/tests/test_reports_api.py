@@ -65,8 +65,10 @@ def test_without_token_is_401(client: TestClient) -> None:
 
 
 @pytest.mark.usefixtures("clean_db")
-def test_counselor_read_is_blocked_until_the_directory_lands(client: TestClient) -> None:
+def test_counselor_read_is_blocked_until_the_directory_lands(client: TestClient, monkeypatch) -> None:
     """端到端确认现在报的是 403 而不是空数据：空数据会被前端当成「当晚没人」。"""
+    from app.modules.directory import service as directory
+    monkeypatch.setattr(directory, "get_assigned_students", lambda *args: [])
     token = token_for(client, "counselor")
     for path in ("/reports/daily", "/reports/weekly"):
         response = client.get(f"{API}{path}", headers=auth(token))

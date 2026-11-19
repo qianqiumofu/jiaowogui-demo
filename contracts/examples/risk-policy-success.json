@@ -1,0 +1,6 @@
+{
+  "version": "synth_v2",
+  "window_nights": 7,
+  "times_threshold": 3,
+  "consecutive_threshold": 3
+}

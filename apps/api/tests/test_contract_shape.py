@@ -42,3 +42,8 @@ def test_demo_clock_crosses_midnight(client) -> None:
     assert date.fromisoformat(start[:10]) == date.fromisoformat(state["service_date"]) + timedelta(days=1)
     assert start[11:19] == "00:00:00" and end[11:19] == "06:00:00"
     assert start[-6:] == end[-6:] == "+08:00"
+
+    # 最晚可选返宿时刻＝门禁结束前一个核验窗口（06:00-30min=05:30），客户端以此为含上界，
+    # 保证 ±30min 核验窗口不越过 06:00、不在门禁恢复后产出废码。
+    latest = state["latest_return_at"]
+    assert latest[11:19] == "05:30:00" and latest[:10] == end[:10] and latest[-6:] == "+08:00"

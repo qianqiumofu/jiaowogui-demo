@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "student_id": "stu_synth_0001",
+      "school_id": "2023S0001",
+      "display_name": "张三（合成）",
+      "college_org_id": "org_college_cs",
+      "college_name": "计算机学院",
+      "major": "合成计算机专业",
+      "grade": "2023",
+      "class_name": "2023级合成1班",
+      "building_id": "bldg_a1"
+    }
+  ],
+  "next_cursor": null
+}

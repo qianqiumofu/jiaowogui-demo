@@ -34,7 +34,8 @@ Thumbs.db
 desktop.ini
 
 # 演示导出数据与本地数据库文件
-exports/
+# 只忽略仓库根目录下的导出落盘目录；`apps/api/app/modules/exports/` 是导出模块源码，必须纳入版本控制。
+/exports/
 *.sqlite3
 *.dump
 

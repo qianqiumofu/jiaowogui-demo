@@ -1,0 +1,24 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { api } from '@/shared/api/client'
+import type { ManagedUser, RoleGrant, StudentDirectoryItem, Role } from '@/shared/api/types'
+import { describeError, ROLE_LABEL, useSessionStore } from '@/shared/stores/session'
+const session = useSessionStore()
+const users=ref<ManagedUser[]>([]), grants=ref<RoleGrant[]>([]), students=ref<StudentDirectoryItem[]>([])
+const audit=ref<Record<string,unknown>[]>([]), message=ref(''), busy=ref(false)
+const selectedUser=ref(''), role=ref<Role>('COUNSELOR'), picked=ref<string[]>([]), colleges=ref<string[]>([])
+const filters=ref({college_org_id:'',major:'',grade:'',class_name:'',q:''})
+const isSchool=computed(()=>session.activeRole==='AUTH_ADMIN')
+const roles=computed<Role[]>(()=>isSchool.value?['COLLEGE_ADMIN','COUNSELOR','IDEOLOGY','CAMPUS']:['COUNSELOR','IDEOLOGY'])
+const teachers=computed(()=>users.value.filter(x=>x.identity_types.includes('TEACHER')))
+watch([selectedUser,role,grants],()=>{const g=grants.value.find(g=>g.user_id===selectedUser.value&&g.role===role.value&&g.active);picked.value=[...(g?.student_ids??[])];colleges.value=[...(g?.college_org_ids??[])]})
+const allStudents=ref<StudentDirectoryItem[]>([])
+const collegeOptions=computed(()=>Array.from(new Map(allStudents.value.map(x=>[x.college_org_id,x.college_name])).entries()))
+const option=(key:'major'|'grade'|'class_name')=>Array.from(new Set(allStudents.value.filter(x=>!filters.value.college_org_id||x.college_org_id===filters.value.college_org_id).map(x=>x[key]))).sort()
+async function filter(){try {students.value=(await api.directoryStudents(Object.fromEntries(Object.entries(filters.value).filter(([,v])=>v)))).items} catch(e){message.value=describeError(e)}}
+async function load(){try{const [u,g,s,a]=await Promise.all([api.managedUsers(),api.grants(),api.directoryStudents(),api.audit()]);users.value=u.items;grants.value=g.items;allStudents.value=s.items;students.value=s.items;audit.value=a.items;selectedUser.value ||= teachers.value[0]?.user_id ?? ''}catch(e){message.value=describeError(e)}}
+async function save(){busy.value=true;try{await api.grant({user_id:selectedUser.value,role:role.value,student_ids:picked.value,college_org_ids:colleges.value});message.value='职责及负责关系已保存，目标人员需要重新登录。';await load()}catch(e){message.value=describeError(e)}finally{busy.value=false}}
+async function revoke(id:string){try{await api.revokeGrant(id);message.value='职责已撤回。';await load()}catch(e){message.value=describeError(e)}}
+onMounted(load)
+</script>
+<template><div class="stack"><section class="panel"><h2>职责授予与负责学生</h2><p>{{ isSchool ? '校级部门可在全校设置学院负责人和工作职责。' : '只管理获授学院内的教师与学生。' }}</p><p v-if="message" role="status">{{ message }}</p><div class="manage-grid"><label>教师<select v-model="selectedUser"><option v-for="u in teachers" :key="u.user_id" :value="u.user_id">{{ u.display_name }} · {{ u.position_title }}</option></select></label><label>授予职责<select v-model="role"><option v-for="r in roles" :key="r" :value="r">{{ ROLE_LABEL[r] }}</option></select></label></div><fieldset v-if="role==='COLLEGE_ADMIN'"><legend>管理学院</legend><label v-for="[id,name] in collegeOptions" :key="id"><input v-model="colleges" type="checkbox" :value="id">{{ name }}</label></fieldset><template v-if="role==='COUNSELOR'||role==='IDEOLOGY'"><h3>筛选并勾选负责学生</h3><form class="manage-grid" @submit.prevent="filter"><label>学院<select v-model="filters.college_org_id"><option value="">范围内全部</option><option v-for="[id,name] in collegeOptions" :key="id" :value="id">{{ name }}</option></select></label><label v-for="key in (['major','grade','class_name'] as const)" :key="key">{{ {major:'专业',grade:'年级',class_name:'班级'}[key] }}<select v-model="filters[key]"><option value="">全部</option><option v-for="v in option(key)" :key="v" :value="v">{{ v }}</option></select></label><label>姓名／学号<input v-model="filters.q"></label><button type="submit">筛选学生</button></form><p>已选 {{ picked.length }} 人；筛选不会自动扩大负责范围。</p><div class="manage-students"><label v-for="s in students" :key="s.student_id"><input v-model="picked" type="checkbox" :value="s.student_id">{{ s.school_id }} {{ s.display_name }} · {{ s.major }} {{ s.grade }} {{ s.class_name }}</label></div></template><button type="button" :disabled="busy||!selectedUser" @click="save">保存职责与范围</button></section><section class="panel"><h2>职责记录</h2><ul><li v-for="g in grants" :key="g.id">{{ users.find(u=>u.user_id===g.user_id)?.display_name ?? g.user_id }} · {{ ROLE_LABEL[g.role] }} · {{ g.active?'有效':'已撤回' }} · 负责 {{ g.student_ids.length }} 人 <button v-if="g.active&&roles.includes(g.role)" @click="revoke(g.id)">撤回</button></li></ul></section><section class="panel"><h2>权限变更审计</h2><p v-for="a in audit" :key="String(a.id)">{{ a.created_at }} · {{ a.action }} · {{ a.target }}</p></section></div></template>

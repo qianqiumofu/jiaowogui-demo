@@ -1,0 +1,10 @@
+{
+  "code": "OUT_OF_SCOPE",
+  "message": "目标不在当前有效数据范围内。",
+  "request_id": "req_synth_0006",
+  "details": {
+    "resource_type": "student_contact",
+    "resource_id": "stu_synth_0013",
+    "allowed": ["bldg_a1"]
+  }
+}

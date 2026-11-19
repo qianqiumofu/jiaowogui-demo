@@ -34,3 +34,6 @@ tzdata==2026.6
 uvicorn==0.54.0
 watchfiles==1.3.0
 websockets==17.4
+
+# 本地 SVG 二维码编码，无 Pillow 或外部图片服务。
+qrcode==8.2

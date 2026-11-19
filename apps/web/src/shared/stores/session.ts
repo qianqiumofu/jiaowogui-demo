@@ -8,7 +8,11 @@ export const ROLE_LABEL: Record<Role, string> = {
   STUDENT: '学生',
   DORM_MANAGER: '宿管',
   COUNSELOR: '辅导员',
-  CAMPUS: '园区',
+  CAMPUS: '园区负责人',
+  TEACHER: '教师',
+  IDEOLOGY: '专职思政',
+  COLLEGE_ADMIN: '学院负责人',
+  AUTH_ADMIN: '校级权限管理',
 }
 
 const SESSION_ENDED_CODES = new Set(['SESSION_INVALID', 'UNAUTHENTICATED'])

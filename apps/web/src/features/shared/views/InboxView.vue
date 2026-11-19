@@ -6,7 +6,10 @@ import type { Notification, NotificationTemplate } from '@/shared/api/types'
 import { describeError, useSessionStore } from '@/shared/stores/session'
 
 const TEMPLATE_LABELS: Record<NotificationTemplate, string> = {
-  NIGHT_ROSTER: '23:30 名单',
+  NIGHT_ROSTER: '24:00 名单',
+  DORM_APPROVED: '预约通过',
+  DORM_RESCHEDULED: '预约改期',
+  DORM_CANCELLED: '预约撤销',
   DAILY_REPORT: '日报',
   WEEKLY_REPORT: '周报',
   RISK_ALERT: '跟进提示',

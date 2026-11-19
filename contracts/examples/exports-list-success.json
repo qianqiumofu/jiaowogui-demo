@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "export_id": "exp_demo_gender_week",
+      "report": "STATISTICS",
+      "status": "PENDING",
+      "requested_by": "usr_synth_0004",
+      "params": {
+        "date_from": "2026-11-08",
+        "date_to": "2026-11-14",
+        "group_by": "gender",
+        "attribution": "snapshot"
+      },
+      "file_name": null,
+      "row_count": null,
+      "error": null,
+      "idempotency_key": null,
+      "created_at": "2026-11-17T18:05:12+08:00",
+      "updated_at": "2026-11-17T18:05:12+08:00",
+      "done_at": null,
+      "expires_at": null,
+      "downloadable": false
+    },
+    {
+      "export_id": "exp_demo_park_east1",
+      "report": "STATISTICS",
+      "status": "DONE",
+      "requested_by": "usr_synth_0004",
+      "params": {
+        "date_from": "2026-11-01",
+        "date_to": "2026-11-14",
+        "park_org_id": "campus_park_east1",
+        "group_by": "building",
+        "attribution": "snapshot"
+      },
+      "file_name": "jiaowogui_statistics_20261101-20261114_building.csv",
+      "row_count": 2,
+      "error": null,
+      "idempotency_key": "demo-campus-park-east1",
+      "created_at": "2026-11-17T18:00:44+08:00",
+      "updated_at": "2026-11-17T18:00:44+08:00",
+      "done_at": "2026-11-17T18:00:44+08:00",
+      "expires_at": "2026-11-24T18:00:44+08:00",
+      "downloadable": true
+    }
+  ],
+  "next_cursor": null
+}

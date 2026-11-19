@@ -28,7 +28,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 def _account(account) -> dict:
     return {
-        "id": account.id,
+        "id": account.user_id,
         "login_name": account.login_name,
         "display_name": account.display_name,
         "building_ids": list(account.building_ids),
@@ -81,7 +81,7 @@ def reset_staff_password(
     staff_account_id: str, guarded: ResetDep, db: SessionDep, request: Request
 ) -> dict:
     account, password = staff_accounts.reset_password(db, staff_account_id)
-    _store(request).drop_user(account.id)
+    _store(request).drop_user(account.user_id)
     return {"account": _account(account), "initial_password": password}
 
 
@@ -90,5 +90,5 @@ def disable_staff_account(
     staff_account_id: str, guarded: DisableDep, db: SessionDep, request: Request
 ) -> dict:
     account = staff_accounts.disable(db, request.app.state.clock, staff_account_id)
-    _store(request).drop_user(account.id)
+    _store(request).drop_user(account.user_id)
     return _account(account)

@@ -9,6 +9,10 @@ const HOME_BY_ROLE: Record<Role, string> = {
   COUNSELOR: 'counselor-students',
   DORM_MANAGER: 'dorm-tonight',
   CAMPUS: 'campus-query',
+  TEACHER: 'profile',
+  IDEOLOGY: 'counselor-students',
+  COLLEGE_ADMIN: 'counselor-students',
+  AUTH_ADMIN: 'permissions',
 }
 
 function homeTarget(): string {
@@ -40,13 +44,13 @@ const routes: RouteRecordRaw[] = [
         path: 'counselor/students',
         name: 'counselor-students',
         component: () => import('@/features/counselor/views/StudentsView.vue'),
-        meta: { roles: ['COUNSELOR'], label: '负责学生' },
+        meta: { roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN'], label: '负责学生' },
       },
       {
         path: 'counselor/reports',
         name: 'counselor-reports',
         component: () => import('@/features/counselor/views/ReportsView.vue'),
-        meta: { roles: ['COUNSELOR'], label: '日报与周报' },
+        meta: { roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN'], label: '日报与周报' },
       },
       {
         path: 'dorm/tonight',
@@ -83,7 +87,7 @@ const routes: RouteRecordRaw[] = [
         name: 'shared-inbox',
         component: () => import('@/features/shared/views/InboxView.vue'),
         meta: {
-          roles: ['COUNSELOR', 'DORM_MANAGER', 'CAMPUS'],
+          roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'DORM_MANAGER', 'CAMPUS'],
           label: '模拟收件箱',
           action: 'notification:read',
         },
@@ -92,14 +96,18 @@ const routes: RouteRecordRaw[] = [
         path: 'shared/risk',
         name: 'shared-risk',
         component: () => import('@/features/shared/views/RiskView.vue'),
-        meta: { roles: ['COUNSELOR', 'DORM_MANAGER', 'CAMPUS'], label: '风险跟进', action: 'risk:read' },
+        meta: { roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'DORM_MANAGER', 'CAMPUS'], label: '风险跟进', action: 'risk:read' },
       },
       {
         path: 'shared/records',
         name: 'shared-records',
         component: () => import('@/features/shared/views/RecordsView.vue'),
-        meta: { roles: ['COUNSELOR', 'DORM_MANAGER'], label: '返宿记录' },
+        meta: { roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'DORM_MANAGER'], label: '返宿记录' },
       },
+      { path: 'profile', name: 'profile', component: () => import('@/features/management/views/ProfileView.vue'), meta: { label: '我的身份' } },
+      { path: 'management/permissions', name: 'permissions', component: () => import('@/features/management/views/PermissionsView.vue'), meta: { roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN'], label: '权限与负责关系', action: 'permission:manage' } },
+      { path: 'campus/duties', name: 'duties', component: () => import('@/features/management/views/DutyView.vue'), meta: { roles: ['CAMPUS'], label: '宿管值班指派', action: 'duty:assign' } },
+      { path: 'campus/risk-policy', name: 'risk-policy', component: () => import('@/features/management/views/PolicyView.vue'), meta: { roles: ['CAMPUS'], label: '风险规则版本', action: 'risk:config' } },
       {
         path: 'guide',
         name: 'guide',

@@ -28,11 +28,11 @@ def campus_token(client: TestClient) -> str:
 
 
 def now_bj() -> datetime:
-    return datetime.now(TZ)
+    return datetime(2026,11,15,18,0,tzinfo=TZ)
 
 
 def offset_clock(client: TestClient, target: datetime) -> None:
-    minutes = int((target - now_bj()).total_seconds() // 60)
+    minutes = int((target - datetime.now(TZ)).total_seconds() // 60)
     response = client.post(f"{API}/demo/clock", json={"offset_minutes": minutes})
     assert response.status_code == 200, response.text
 
@@ -45,7 +45,7 @@ def at_night(night_index: int) -> datetime:
 
 def create_on(client: TestClient, token: str, night_index: int) -> dict:
     offset_clock(client, at_night(night_index))
-    planned = at_night(night_index) + timedelta(days=1, hours=7, minutes=30)  # 次日 01:30
+    planned = at_night(night_index) + timedelta(hours=7, minutes=30)  # 次日 01:30
     response = client.post(
         f"{API}/reservations",
         json={"planned_return_at": planned.isoformat(), "reason": "赶项目进度"},
@@ -81,27 +81,15 @@ def test_notice_appears_on_third_night_only(client, student_token) -> None:
 def test_cancelled_night_does_not_count(client, student_token) -> None:
     create_on(client, student_token, 0)
     second = create_on(client, student_token, 1)
-    third = create_on(client, student_token, 2)
-    assert "risk_notice" in third
-
-    # 回头取消第二夜：窗口内只剩两夜，第四夜也就不再是「首次越界」。
-    offset_clock(client, at_night(3))
     cancelled = client.post(
         f"{API}/reservations/{second['id']}/cancel",
-        json={"expected_version": second["version"]},
-        headers=auth(student_token),
-    )
+        json={"expected_version": second["version"]}, headers=auth(student_token))
     assert cancelled.status_code == 200, cancelled.text
-    fourth = client.post(
-        f"{API}/reservations",
-        json={
-            "planned_return_at": (at_night(3) + timedelta(days=1, hours=7, minutes=30)).isoformat(),
-            "reason": "通宵实验",
-        },
-        headers=auth(student_token),
-    )
-    assert fourth.status_code == 201, fourth.text
-    assert "risk_notice" not in fourth.json()
+    third = create_on(client, student_token, 2)
+    assert "risk_notice" not in third
+    fourth = create_on(client, student_token, 3)
+    assert fourth["risk_notice"]["times"] == 3
+    assert fourth["risk_notice"]["consecutive_nights"] == 2
 
 
 def test_popup_creates_no_notification_job(client, student_token, campus_token) -> None:
@@ -110,7 +98,8 @@ def test_popup_creates_no_notification_job(client, student_token, campus_token) 
         create_on(client, student_token, index)
     jobs = client.get(f"{API}/notification-jobs", headers=auth(campus_token))
     assert jobs.status_code == 200, jobs.text
-    assert jobs.json()["items"] == []
+    assert [j["template"] for j in jobs.json()["items"]] == ["DORM_APPROVED"] * 3
+    assert all(j["business_key"].endswith(":APPROVED") for j in jobs.json()["items"])
     assert client.get(f"{API}/notifications", headers=auth(student_token)).status_code == 403
 
 
@@ -120,7 +109,7 @@ def test_reschedule_never_carries_notice(client, student_token) -> None:
     third = create_on(client, student_token, 2)
     assert "risk_notice" in third
 
-    later = (at_night(2) + timedelta(days=1, hours=8)).isoformat()  # 次日 02:00
+    later = (at_night(2) + timedelta(hours=8)).isoformat()  # 次日 02:00
     patched = client.patch(
         f"{API}/reservations/{third['id']}",
         json={"expected_version": third["version"], "planned_return_at": later},

@@ -23,6 +23,8 @@ ACTIONS: dict[str, set[Role]] = {
     "risk:ack": {Role.COUNSELOR, Role.DORM_MANAGER},
     # B：宿管端与园区端
     "building:tonight": {Role.DORM_MANAGER},
+    "contact:read_duty": {Role.DORM_MANAGER},
+    "building_residents:read_duty": {Role.DORM_MANAGER},
     "manual_return:create": {Role.DORM_MANAGER},
     "duty:read": {Role.DORM_MANAGER, Role.COUNSELOR},
     "duty:switch": {Role.DORM_MANAGER},
@@ -51,3 +53,23 @@ def is_allowed(role: Role, action: str) -> bool:
 
 def allowed_actions(role: Role) -> list[str]:
     return sorted(a for a, roles in ACTIONS.items() if role in roles)
+
+# 专职思政按明确负责关系工作；学院负责人读学院范围，不默认成为风险收件人。
+for _action,_roles in ACTIONS.items():
+    if Role.COUNSELOR in _roles:
+        _roles.add(Role.IDEOLOGY)
+        if _action not in ("risk:ack","report:subscribe"):
+            _roles.add(Role.COLLEGE_ADMIN)
+ACTIONS.update({
+    "identity:profile":set(Role),
+    "permission:manage":{Role.AUTH_ADMIN,Role.COLLEGE_ADMIN},
+    "directory:students":{Role.COUNSELOR,Role.IDEOLOGY,Role.COLLEGE_ADMIN,Role.AUTH_ADMIN,Role.CAMPUS},
+    "return:correct":{Role.DORM_MANAGER},
+    "duty:assign":{Role.CAMPUS},
+})
+# 园区管理宿管；宿管只读取指派，不可自授跨楼栋范围。
+ACTIONS["duty:switch"]={Role.CAMPUS}
+
+ACTIONS["duty:read"].add(Role.CAMPUS)
+
+ACTIONS["return:read_evidence"]={Role.STUDENT,Role.COUNSELOR,Role.IDEOLOGY,Role.COLLEGE_ADMIN,Role.DORM_MANAGER}

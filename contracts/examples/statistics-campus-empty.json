@@ -1,0 +1,24 @@
+{
+  "group_by": "park",
+  "attribution": "snapshot",
+  "range": {
+    "date_from": "2026-11-16",
+    "date_to": "2026-11-16"
+  },
+  "filters": {
+    "park_org_id": "campus_park_east4"
+  },
+  "totals": {
+    "people": 0,
+    "nights": 0,
+    "returns": 0,
+    "qr_returns": 0,
+    "manual_returns": 0,
+    "enrolled": 0,
+    "reservations": 0,
+    "unconfirmed": 0
+  },
+  "rows": [],
+  "by_day": [],
+  "data_gaps": []
+}

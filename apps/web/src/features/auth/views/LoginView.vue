@@ -19,7 +19,11 @@ const ROLE_TEXT: Record<string, string> = {
   STUDENT: '学生',
   DORM_MANAGER: '宿管',
   COUNSELOR: '辅导员',
-  CAMPUS: '园区',
+  CAMPUS: '园区负责人',
+  IDEOLOGY: '专职思政',
+  TEACHER: '教师',
+  COLLEGE_ADMIN: '学院负责人',
+  AUTH_ADMIN: '校级权限管理',
 }
 
 const unified = computed(() =>

@@ -1,23 +1,31 @@
-"""风险模块占位（A 主责，M4 填充）。学生不可读；园区只查询、不收推送。"""
-
 from typing import Annotated
-
-from fastapi import APIRouter, Depends
-
-from app.core.errors import not_implemented
+from fastapi import APIRouter,Depends,Request
+from pydantic import BaseModel,Field
+from sqlalchemy.orm import Session
+from app.core.db import get_session
 from app.modules.authorization.dependencies import require
+from app.modules.identity.schemas import SessionContext
+from app.modules.risk import events,policy
+router=APIRouter(tags=["risk"])
+Read=Annotated[SessionContext,Depends(require("risk:read"))]
+Act=Annotated[SessionContext,Depends(require("risk:ack"))]
+Config=Annotated[SessionContext,Depends(require("risk:config"))]
+DB=Annotated[Session,Depends(get_session)]
+class Note(BaseModel):
+    note:str=Field(min_length=1,max_length=500)
+class Policy(BaseModel):
+    version:str=Field(min_length=1,max_length=64)
+    window_nights:int=Field(ge=1,le=365)
+    times_threshold:int=Field(ge=1,le=365)
+    consecutive_threshold:int=Field(ge=1,le=365)
 
-router = APIRouter(prefix="/risk-events", tags=["risk"])
-
-ReadDep = Annotated[object, Depends(require("risk:read"))]
-AckDep = Annotated[object, Depends(require("risk:ack"))]
-
-
-@router.get("")
-def list_events(guarded: ReadDep, status: str | None = None) -> dict:
-    return {"items": [], "next_cursor": None}
-
-
-@router.post("/{event_id}/ack")
-def ack(event_id: str, guarded: AckDep) -> dict:
-    raise not_implemented("M4", "风险事件确认与跟进（收件人限定辅导员与当班宿管）")
+@router.get("/risk-events")
+def list_events(guard:Read,db:DB,status:str|None=None):return events.list_events(db,guard,status)
+@router.post("/risk-events/{event_id}/ack")
+def ack(event_id:str,payload:Note,guard:Act,db:DB,request:Request):return events.act(db,guard,event_id,"ACK",payload.note,request.app.state.clock.now())
+@router.post("/risk-events/{event_id}/resolve")
+def resolve(event_id:str,payload:Note,guard:Act,db:DB,request:Request):return events.act(db,guard,event_id,"RESOLVE",payload.note,request.app.state.clock.now())
+@router.get("/risk-policy")
+def current(guard:Config):return policy.current()
+@router.put("/risk-policy")
+def update(payload:Policy,guard:Config,db:DB,request:Request):return policy.save(db,guard.user_id,payload.model_dump(),request.app.state.clock.now())

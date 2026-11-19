@@ -38,7 +38,9 @@ const SERVER_ISO =
 
 function minutesFor(label: string, state: ClockState): number {
   if (label === '回到现在') return 0
-  return label === '推进到23:30' ? until(23, 30, state) : until(0, 10, state)
+  const targets: Record<string, [number, number]> = { '推进到23:50': [23, 50], '推进到24:00': [0, 0], '跨过零点': [0, 40], '推进到06:00': [6, 0] }
+  const picked = targets[label]
+  return picked ? until(picked[0], picked[1], state) : state.offset_minutes
 }
 
 // 目标时刻只由服务端返回的业务时区字符串构造，不用浏览器本地时间，也不管本地钟快钟慢。
@@ -68,6 +70,7 @@ async function logoutNow() {
   }
 }
 
+
 onMounted(refresh)
 </script>
 
@@ -85,8 +88,9 @@ onMounted(refresh)
       <p v-if="message" class="panel__placeholderNote">{{ message }}</p>
       <div class="settings__row">
         <button class="settings__btn" type="button" @click="jump('回到现在')">回到现在</button>
-        <button class="settings__btn" type="button" @click="jump('推进到23:30')">推进到 23:30</button>
-        <button class="settings__btn" type="button" @click="jump('跨过零点')">跨过零点</button>
+        <button class="settings__btn" type="button" @click="jump('推进到23:50')">汇总前 23:50</button>
+        <button class="settings__btn" type="button" @click="jump('推进到24:00')">推进到 24:00</button>
+        <button class="settings__btn" type="button" @click="jump('跨过零点')">门禁中 00:40</button>
       </div>
     </section>
     <section class="panel">

@@ -1,0 +1,18 @@
+{
+  "return_id": "ret_synth_0002",
+  "student_id": "stu_synth_0003",
+  "service_date": "2026-11-15",
+  "source": "MANUAL",
+  "pass_id": null,
+  "gate_id": null,
+  "gate_name": null,
+  "reservation_id": null,
+  "occurred_at": "2026-11-16T00:21:30+08:00",
+  "recorded_at": "2026-11-16T00:22:10+08:00",
+  "evidence": {
+    "note": "按门铃后手动开门",
+    "recorded_by": "usr_synth_0003",
+    "building_id": "bldg_a1"
+  },
+  "idempotency_key": "manual_synth_0001"
+}

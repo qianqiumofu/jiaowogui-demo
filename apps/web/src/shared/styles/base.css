@@ -632,6 +632,34 @@ textarea {
   white-space: pre-wrap;
 }
 
+.terminal__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.terminal__field select {
+  flex: 1;
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.terminal__result[data-tone='ok'] {
+  border-color: rgba(143, 178, 255, 0.34);
+  color: var(--accent);
+}
+
+.terminal__result[data-tone='warn'] {
+  border-color: rgba(255, 180, 168, 0.36);
+  color: var(--danger);
+}
+
 .settings,
 .guide {
   display: flex;
@@ -1588,3 +1616,427 @@ textarea {
   flex: 1 1 100%;
   color: var(--danger);
 }
+
+/* B 业务页面样式：与 A 的登录恢复及公共壳同时保留。 */
+.tonight__tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tonight__tab {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-raise);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: color var(--motion), border-color var(--motion);
+}
+
+.tonight__tab--active {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tonight__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tonight__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+}
+
+.tonight__main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tonight__room {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.tonight__time {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.tonight__meta {
+  color: var(--ink-faint);
+  font-size: 0.86rem;
+}
+
+.tonight__flag {
+  color: var(--warn);
+  font-size: 0.86rem;
+}
+
+.tonight__flag[data-flag='CANCELLED'] {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.tonight__done {
+  color: var(--ink-dim);
+  font-size: 0.86rem;
+}
+
+.tonight__name {
+  font-weight: 600;
+}
+
+.panel__placeholder--denied {
+  border-color: rgba(255, 217, 160, 0.36);
+  background: rgba(255, 217, 160, 0.06);
+}
+
+.manual__hint {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.manual__search {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.manual__search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.manual__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.manual__field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.manual__actions {
+  margin-top: 16px;
+}
+
+.manual__result {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-panel);
+}
+
+.manual__result[data-tone='ok'] {
+  border-color: rgba(143, 178, 255, 0.34);
+  color: var(--accent);
+}
+
+.manual__result[data-tone='warn'] {
+  border-color: rgba(255, 217, 160, 0.36);
+  color: var(--warn);
+}
+
+.tonight__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.tonight__contactError {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .tonight__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tonight__side {
+    align-items: flex-start;
+  }
+}
+
+.records__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.records__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.records__row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+}
+
+.records__main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.records__name {
+  font-weight: 600;
+}
+
+.records__meta {
+  color: var(--ink-faint);
+  font-size: 0.86rem;
+}
+
+.records__pill {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}
+
+.records__pill[data-pass='CONSUMED'] {
+  color: var(--accent);
+  border-color: rgba(143, 178, 255, 0.34);
+  background: var(--accent-soft);
+}
+
+.records__pill[data-pass='EXPIRED'],
+.records__pill[data-pass='REVOKED'] {
+  color: var(--danger);
+  border-color: rgba(255, 180, 168, 0.36);
+}
+
+.records__pill[data-pass='ISSUED'] {
+  color: var(--warn);
+  border-color: rgba(255, 217, 160, 0.36);
+}
+
+.records__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.records__grid dt {
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+}
+
+.records__grid dd {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 14px;
+  margin: 14px 0 0;
+}
+
+.stat__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+}
+
+.stat__field select,
+.stat__field input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.stat__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.stat__summary {
+  margin-top: 14px;
+}
+
+.stat__gap {
+  color: var(--warn);
+}
+
+.stat__error {
+  color: var(--danger);
+}
+
+.stat__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.stat__card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raise);
+}
+
+.stat__label {
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.stat__value {
+  font-size: 1.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.stat__sub {
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+}
+
+.stat__table {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__caption {
+  caption-side: top;
+  text-align: left;
+  padding-bottom: 6px;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.stat__table th,
+.stat__table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.stat__table th:first-child,
+.stat__table td:first-child {
+  text-align: left;
+  color: var(--ink-dim);
+}
+
+.stat__table thead th {
+  color: var(--ink-faint);
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+
+.stat__jobs {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat__job {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raise);
+}
+
+.stat__jobMain {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.records__pill[data-status='DONE'] {
+  color: var(--accent);
+  border-color: rgba(143, 178, 255, 0.34);
+  background: var(--accent-soft);
+}
+
+.records__pill[data-status='FAILED'] {
+  color: var(--danger);
+  border-color: rgba(255, 180, 168, 0.36);
+}
+
+.records__pill[data-status='PENDING'],
+.records__pill[data-status='RUNNING'] {
+  color: var(--warn);
+  border-color: rgba(255, 217, 160, 0.36);
+}
+
+.manage-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:16px 0; }
+.manage-grid label { display:flex;flex-direction:column;gap:6px; }
+.manage-students { display:grid;gap:8px;max-height:340px;overflow:auto;padding:12px;border:1px solid var(--line);margin:14px 0; }
+.manage-table { overflow-x:auto; }
+.manage-table table { width:100%;border-collapse:collapse; }
+.manage-table td,.manage-table th { text-align:left;padding:10px;border-bottom:1px solid var(--line); }
+.risk-card { padding:16px 0;border-bottom:1px solid var(--line); }
+.risk-card textarea { display:block;width:100%;margin:8px 0; }
+.verify-panel { padding-top:16px;display:flex;flex-direction:column;align-items:flex-start;gap:12px; }
+.verify-qr { background:white;padding:12px;border-radius:12px;width:min(280px,100%); }
+.verify-qr svg { display:block;width:100%;height:auto; }
+.verify-token { display:block;overflow-wrap:anywhere;margin:10px 0; }

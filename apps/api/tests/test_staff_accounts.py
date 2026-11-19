@@ -166,7 +166,7 @@ def test_disable_kills_live_session_and_blocks_login(client, clean_db) -> None:
     assert again.json()["code"] == "ACCOUNT_DISABLED"
 
 
-def test_staff_account_cannot_read_reservations_before_directory_lands(client, clean_db) -> None:
+def test_staff_account_cannot_read_reservations_before_directory_lands(client, clean_db, monkeypatch) -> None:
     """固定楼栋不等于数据范围已解析：目录落地前必须拒绝，不能返回空名单。"""
     campus = token_for(client, "campus")
     created = create(client, campus)
@@ -175,6 +175,8 @@ def test_staff_account_cannot_read_reservations_before_directory_lands(client, c
         json={"login_name": "dorm_a2", "password": created["initial_password"]},
     ).json()["token"]
 
+    from app.modules.directory import service as directory
+    monkeypatch.setattr(directory, "get_duty_buildings", lambda *args: [])
     response = client.get(f"{API}/reservations", headers=auth(token))
     assert response.status_code == 403
     assert response.json()["code"] == "SCOPE_UNRESOLVED"

@@ -1,0 +1,74 @@
+{
+  "group_by": "park",
+  "attribution": "snapshot",
+  "range": {
+    "date_from": "2026-11-01",
+    "date_to": "2026-11-15"
+  },
+  "filters": {
+    "gender": "MALE"
+  },
+  "totals": {
+    "people": 21,
+    "nights": 58,
+    "returns": 58,
+    "qr_returns": 44,
+    "manual_returns": 14,
+    "enrolled": 36,
+    "reservations": 0,
+    "unconfirmed": 0
+  },
+  "rows": [
+    {
+      "value": "campus_park_east1",
+      "label": "东一区",
+      "people": 14,
+      "nights": 33,
+      "returns": 33,
+      "enrolled": 24,
+      "reservations": 0,
+      "unconfirmed": 0
+    },
+    {
+      "value": "campus_park_west1",
+      "label": "西一区",
+      "people": 5,
+      "nights": 12,
+      "returns": 12,
+      "enrolled": 6,
+      "reservations": 0,
+      "unconfirmed": 0
+    },
+    {
+      "value": "campus_park_west3",
+      "label": "西三区",
+      "people": 2,
+      "nights": 13,
+      "returns": 13,
+      "enrolled": 6,
+      "reservations": 0,
+      "unconfirmed": 0
+    }
+  ],
+  "by_day": [
+    {
+      "service_date": "2026-11-14",
+      "people": 11,
+      "nights": 11,
+      "returns": 11,
+      "enrolled": 36,
+      "reservations": 0,
+      "unconfirmed": 0
+    },
+    {
+      "service_date": "2026-11-15",
+      "people": 10,
+      "nights": 10,
+      "returns": 10,
+      "enrolled": 36,
+      "reservations": 0,
+      "unconfirmed": 0
+    }
+  ],
+  "data_gaps": []
+}

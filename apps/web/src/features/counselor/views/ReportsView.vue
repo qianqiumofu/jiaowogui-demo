@@ -3,8 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 
 import { RETURN_STATE_TEXT } from '@/features/counselor/labels'
 import { ApiRequestError, api } from '@/shared/api/client'
+import { describeError,useSessionStore } from '@/shared/stores/session'
 import type { DailyReport, WeeklyReport } from '@/shared/api/types'
 
+const session=useSessionStore()
+const subscription=ref({daily:false,weekly:false}), subMessage=ref('')
+async function saveSubscription(){try{subscription.value=await api.saveSubscription(subscription.value);subMessage.value='订阅已保存；普通报告与风险投递相互独立。'}catch(e){subMessage.value=describeError(e)}}
 type Kind = 'daily' | 'weekly'
 
 const kind = ref<Kind>('daily')
@@ -77,6 +81,7 @@ onMounted(async () => {
   } catch {
     // 时钟读不到只影响日期控件的上界，服务端仍然会拒绝越界的查询。
   }
+  if(session.can('report:subscribe')) { try { subscription.value=await api.subscription() } catch(e) { subMessage.value=describeError(e) } }
   await load()
 })
 </script>
@@ -164,7 +169,7 @@ onMounted(async () => {
         </ul>
       </template>
 
-      <p class="panel__stage">订阅与邮件投递时刻仍为占位（M4）。</p>
+      <section v-if="session.can('report:subscribe')"><h3>自动报告订阅</h3><label><input v-model="subscription.daily" type="checkbox">日报（次日 08:30，演示配置）</label><label><input v-model="subscription.weekly" type="checkbox">周报（周一 09:00，演示配置）</label><button @click="saveSubscription">保存订阅</button><p role="status">{{ subMessage }}</p><p>由 worker 自动入队并投递到模拟收件箱，不发送真实邮件。</p></section>
     </section>
   </div>
 </template>

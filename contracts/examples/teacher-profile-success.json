@@ -1,0 +1,13 @@
+{
+  "user_id": "usr_synth_0009",
+  "display_name": "合成兼职思政辅导员",
+  "identity_types": [
+    "TEACHER"
+  ],
+  "roles": [
+    "COUNSELOR"
+  ],
+  "college_org_id": "org_college_cs",
+  "student_id": null,
+  "position_title": "辅导员（兼职思政）"
+}

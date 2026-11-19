@@ -16,7 +16,7 @@ pytestmark = pytest.mark.usefixtures("clean_db")
 
 
 def now_bj() -> datetime:
-    return datetime.now(TZ)
+    return datetime(2026,11,15,18,0,tzinfo=TZ)
 
 
 def service_today() -> date:
@@ -39,7 +39,7 @@ def create(client: TestClient, token: str, hour: int = 1, minute: int = 30, reas
 
 
 def offset_clock(client: TestClient, target: datetime) -> None:
-    minutes = int((target - now_bj()).total_seconds() // 60)
+    minutes = int((target - datetime.now(TZ)).total_seconds() // 60)
     response = client.post(f"{API}/demo/clock", json={"offset_minutes": minutes})
     assert response.status_code == 200
 
@@ -82,7 +82,7 @@ def test_second_create_same_night_conflicts(client, student_token) -> None:
 
 @pytest.mark.parametrize(
     ("hour", "minute", "valid"),
-    [(0, 0, True), (5, 59, True), (6, 0, False), (23, 30, False)],
+    [(0, 0, True), (5, 30, True), (5, 45, False), (6, 0, False), (23, 30, False)],
 )
 def test_planned_must_be_inside_gate_window(client, student_token, hour, minute, valid) -> None:
     response = client.post(
@@ -112,11 +112,11 @@ def test_reschedule_unlimited_with_full_history(client, student_token) -> None:
         )
         assert patched.status_code == 200, patched.text
 
-    # R07：超过原预约时间仍可改期——推进到原计划之后、业务夜结束之前。
+    # R07：超过原预约时间仍可改期——推进到原计划之后、最晚可选时刻（05:30）之前。
     offset_clock(client, gate_time(5, 0))
     late = client.patch(
         f"{API}/reservations/{rid}",
-        json={"expected_version": 3, "planned_return_at": gate_time(5, 45).isoformat()},
+        json={"expected_version": 3, "planned_return_at": gate_time(5, 30).isoformat()},
         headers=auth(student_token),
     )
     assert late.status_code == 200
@@ -244,7 +244,10 @@ def test_cross_student_access_is_404_and_roles_denied(client, student_token) -> 
 
 
 @pytest.mark.parametrize("login", ["counselor", "dorm"])
-def test_pending_directory_denies_instead_of_empty_list(client, login) -> None:
+def test_pending_directory_denies_instead_of_empty_list(client, login, monkeypatch) -> None:
+    from app.modules.directory import service as directory
+    monkeypatch.setattr(directory, "get_assigned_students", lambda *args: [])
+    monkeypatch.setattr(directory, "get_duty_buildings", lambda *args: [])
     token = token_for(client, login)
     listed = client.get(f"{API}/reservations", headers=auth(token))
     assert listed.status_code == 403

@@ -34,3 +34,36 @@ export interface ListResult<T> {
   items: T[]
   next_cursor: string | null
 }
+
+
+
+export type ChangeFlag = components['schemas']['ChangeFlag']
+export type TonightItem = components['schemas']['TonightItem']
+export type BuildingTonight = components['schemas']['BuildingTonight']
+export type PassStatus = components['schemas']['PassStatus']
+export type ReturnRecordItem = components['schemas']['ReturnRecordItem']
+export type ReturnRecords = components['schemas']['ReturnRecords']
+export type ReturnRecord = components['schemas']['ReturnRecord']
+export type ScanResult = components['schemas']['ScanAttempt']
+export type StudentContact = components['schemas']['StudentContact']
+export type BuildingResident = components['schemas']['Resident']
+export type ResidentList = components['schemas']['ResidentList']
+export type StatisticsFilters = components['schemas']['StatisticsOptions']
+export type StatisticsMetrics = components['schemas']['StatisticsTotals']
+export type StatisticsRow = components['schemas']['StatisticRow']
+export type StatisticsDay = components['schemas']['StatisticDay']
+export type StatisticsResult = components['schemas']['Statistics']
+export type ExportJob = components['schemas']['ExportJob']
+export type ManualNotificationTemplate = components['schemas']['ManualNotificationTemplate']
+export type ReturnStatus = TonightItem['return_status']
+export type ExportStatus = ExportJob['status']
+export type StatisticsDimension = StatisticsFilters['parks'][number]
+
+export type UserProfile = components['schemas']['UserProfile']
+export type ManagedUser = components['schemas']['ManagedUser']
+export type RoleGrant = components['schemas']['RoleGrant']
+export type StudentDirectoryItem = components['schemas']['StudentDirectoryItem']
+export type VerificationResult = components['schemas']['VerificationResult']
+export type RiskEvent = components['schemas']['RiskEvent']
+export type RiskPolicy = components['schemas']['RiskPolicy']
+export type DutyAssignment = components['schemas']['DutyAssignment']

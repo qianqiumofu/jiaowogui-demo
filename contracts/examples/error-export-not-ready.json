@@ -1,0 +1,9 @@
+{
+  "code": "EXPORT_NOT_READY",
+  "message": "导出还在生成中，请稍后重试。",
+  "request_id": "req_synth_0012",
+  "details": {
+    "export_id": "exp_demo_gender_week",
+    "status": "RUNNING"
+  }
+}

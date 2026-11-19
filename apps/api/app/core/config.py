@@ -25,7 +25,9 @@ class Settings(BaseSettings):
 
     # 通知调度与风险提示的取值全部是「Demo 工程默认」，正式值待学校确认（基线 R16 行）。
     # 时间一律 HH:MM，按业务时区解释；周期任务只能由 worker 读取，不在请求里判定。
-    roster_snapshot_at: str = "23:30"
+    # `dorm_summary_at` 是业务夜 D 的名单汇总时刻，同时是 D 那一夜的首次申请截止（R12）；
+    # `24:00` 即 D+1 00:00，判定统一走 app.core.clock.summary_moment。
+    dorm_summary_at: str = "24:00"
     daily_report_at: str = "08:30"
     weekly_report_at: str = "09:00"
     weekly_report_weekday: int = 0
@@ -40,6 +42,15 @@ class Settings(BaseSettings):
     # 但取值仍只允许在这里配置，业务分支不得写死分钟数。
     verification_margin_minutes: int = 30
     pass_code_seconds: int = 300
+    export_retention_days: int = 7
+    worker_batch_size: int = 50
+    worker_retry_base_seconds: int = 30
+    worker_retry_max_seconds: int = 1800
+    worker_max_attempts: int = 8
+    schedule_lookback_days: int = 2
+    risk_evaluation_at: str = "09:30"
+    cleanup_at: str = "07:00"
+    device_reconcile_seconds: int = 15
 
 
 @lru_cache

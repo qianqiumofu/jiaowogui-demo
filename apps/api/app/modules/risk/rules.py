@@ -29,13 +29,10 @@ class RuleSet:
 
 
 def current_rule_set() -> RuleSet:
-    settings = get_settings()
-    return RuleSet(
-        version=settings.risk_rule_version,
-        window_nights=settings.risk_window_nights,
-        times_threshold=settings.risk_times_threshold,
-        consecutive_threshold=settings.risk_consecutive_threshold,
-    )
+    from app.modules.risk.policy import current
+    value=current()
+    return RuleSet(**value)
+
 
 
 @dataclass(frozen=True)

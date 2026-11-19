@@ -5,7 +5,7 @@ import RevisionTimeline from '@/features/student/components/RevisionTimeline.vue
 import { STATUS_TEXT, VERIFICATION_TEXT } from '@/features/student/labels'
 import { ApiRequestError, api } from '@/shared/api/client'
 import type { ClockState, Reservation, ReservationRevision } from '@/shared/api/types'
-import DataPanel from '@/shared/components/DataPanel.vue'
+import RecordsView from '@/features/shared/views/RecordsView.vue'
 
 const nights = ref<Reservation[]>([])
 const clock = ref<ClockState | null>(null)
@@ -105,12 +105,6 @@ onMounted(load)
       </ul>
     </section>
 
-    <DataPanel
-      title="我的返宿记录"
-      owner="B"
-      stage="M3"
-      milestone="正式返宿记录由扫码回执或人工补录产生"
-      :loader="api.returnRecords"
-    />
+    <RecordsView :self-view="true" />
   </div>
 </template>

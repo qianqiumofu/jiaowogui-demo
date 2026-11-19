@@ -12,7 +12,7 @@ import type {
   ReservationVerification,
   RiskNotice,
 } from '@/shared/api/types'
-import StubPanel from '@/shared/components/StubPanel.vue'
+import VerificationPanel from '@/features/student/components/VerificationPanel.vue'
 
 const clock = ref<ClockState | null>(null)
 const reservation = ref<Reservation | null>(null)
@@ -31,19 +31,23 @@ const history = ref<ListResult<ReservationRevision> | null>(null)
 const historyOpen = ref(false)
 
 const statusText = computed(() => STATUS_TEXT[reservation.value?.status ?? ''] ?? '')
-// 门禁时段由服务端给出（night_window），这里只按它列举档位，不写死 00:00–06:00。
+// 门禁时段与最晚可选时刻都由服务端给出（night_window / latest_return_at），
+// 这里只按它列举档位，不写死 00:00–06:00，也不自行推算 05:30 上限。
 const SLOT_STEP_MINUTES = 15
 
 const nowStamp = computed(() => (clock.value?.now ?? '').slice(0, 16))
 
 const allSlots = computed<string[]>(() => {
   const window = clock.value?.night_window
-  if (!window || window.length !== 2) return []
-  const [start, end] = window
+  const latest = clock.value?.latest_return_at
+  if (!window || window.length !== 2 || !latest) return []
+  const [start] = window
   const day = start.slice(0, 10)
-  const limit = end.slice(0, 10) === day ? toMinutes(end) : 24 * 60
+  // 最晚一档＝服务端给的最晚可选返宿时刻（含），保证核验窗口不越过 06:00。
+  if (latest.slice(0, 10) !== day) return []
+  const cap = toMinutes(latest)
   const out: string[] = []
-  for (let minute = toMinutes(start); minute < limit; minute += SLOT_STEP_MINUTES) out.push(slotOf(day, minute))
+  for (let minute = toMinutes(start); minute <= cap; minute += SLOT_STEP_MINUTES) out.push(slotOf(day, minute))
   return out
 })
 
@@ -56,7 +60,7 @@ const gateLabel = computed(() => {
   const window = clock.value?.night_window
   if (!window || window.length !== 2) return '等待后端时钟'
   const [start, end] = window
-  return `${start.slice(5, 10)} 业务夜 · 返宿时段 ${start.slice(11, 16)}–${end.slice(11, 16)}`
+  return `${start.slice(5, 10)} 返宿日 · 返宿时段 ${start.slice(11, 16)}–${end.slice(11, 16)}`
 })
 
 const nightTime = computed(() => {
@@ -365,12 +369,7 @@ onMounted(async () => {
       </div>
       <p v-else class="panel__line">{{ gateIdleText }}</p>
 
-      <StubPanel
-        title="核验通过后的二维码"
-        owner="A"
-        milestone="M3"
-        note="出码与门禁核销随 B 的签码服务接通，码面会写明是模拟凭证。"
-      />
+      <VerificationPanel :reservation="reservation" />
     </section>
 
     <section v-if="reservation" class="panel">

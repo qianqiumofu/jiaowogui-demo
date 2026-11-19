@@ -1,16 +1,16 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, AwareDatetime
 
 
 class ReservationCreate(BaseModel):
-    planned_return_at: datetime
+    planned_return_at: AwareDatetime
     reason: str = ""
 
 
 class ReservationPatch(BaseModel):
     expected_version: int
-    planned_return_at: datetime | None = None
+    planned_return_at: AwareDatetime | None = None
     reason: str | None = None
 
 

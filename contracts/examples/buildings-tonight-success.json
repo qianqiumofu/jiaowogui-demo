@@ -1,0 +1,63 @@
+{
+  "building_id": "bldg_a1",
+  "service_date": "2026-11-15",
+  "summary_generated_at": "2026-11-16T00:00:00+08:00",
+  "counters": {
+    "total": 3,
+    "entered": 2
+  },
+  "items": [
+    {
+      "student_id": "stu_synth_0001",
+      "school_id": "2023S0001",
+      "display_name": "张三（合成）",
+      "room_no": "A1-301",
+      "college_name": "计算机学院",
+      "grade": "2023",
+      "planned_return_at": "2026-11-16T00:40:00+08:00",
+      "reservation_status": "ACTIVE",
+      "reservation_version": 2,
+      "updated_at": "2026-11-16T00:05:00+08:00",
+      "change_flag": "RESCHEDULED",
+      "return_status": "ENTERED",
+      "entered_at": "2026-11-16T00:44:12+08:00",
+      "gate_id": "gate_a1_north",
+      "return_source": "QR"
+    },
+    {
+      "student_id": "stu_synth_0002",
+      "school_id": "2024S0002",
+      "display_name": "合成学生02",
+      "room_no": "A1-302",
+      "college_name": "数学学院",
+      "grade": "2024",
+      "planned_return_at": "2026-11-16T01:00:00+08:00",
+      "reservation_status": "CANCELLED",
+      "reservation_version": 2,
+      "updated_at": "2026-11-16T00:12:00+08:00",
+      "change_flag": "CANCELLED",
+      "return_status": "PENDING",
+      "entered_at": null,
+      "gate_id": null,
+      "return_source": null
+    },
+    {
+      "student_id": "stu_synth_0003",
+      "school_id": "2025S0003",
+      "display_name": "合成学生03",
+      "room_no": "A1-303",
+      "college_name": "物理学院",
+      "grade": "2025",
+      "planned_return_at": "2026-11-16T00:20:00+08:00",
+      "reservation_status": "ACTIVE",
+      "reservation_version": 1,
+      "updated_at": "2026-11-15T21:40:00+08:00",
+      "change_flag": null,
+      "return_status": "MANUAL_ENTERED",
+      "entered_at": "2026-11-16T00:21:30+08:00",
+      "gate_id": null,
+      "return_source": "MANUAL"
+    }
+  ],
+  "next_cursor": null
+}

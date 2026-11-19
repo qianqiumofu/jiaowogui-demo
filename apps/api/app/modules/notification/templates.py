@@ -1,7 +1,7 @@
 """四类通知的正文模板（A 主责）。
 
 措辞受三条规则约束：
-- R12：23:30 只是汇总时点，不是申请截止；之后的改期与返宿会刷新名单。
+- R12：24:00 汇总同时关闭当夜首次申请；之后的改期与返宿会刷新名单。
 - R15：未确认返宿是查询派生状态，正文不得出现催办、超时提醒或升级处置。
 - R16：风险跟进提示只面向负责辅导员与当班宿管，且必须说明阈值是演示配置。
 
@@ -131,13 +131,13 @@ def render_night_roster(item: RenderInput) -> tuple[str, str]:
     subject = f"今晚返宿名单 · {item.service_date.isoformat()} 业务夜 · {buildings}"
     head = _body_head(
         item.person,
-        f"{item.service_date.isoformat()} 业务夜（06:00 至次日 06:00）23:30 汇总的晚归预约共 {len(item.rows)} 条。",
+        f"{item.service_date.isoformat()} 业务夜（06:00 至次日 06:00）24:00 汇总的晚归预约共 {len(item.rows)} 条。",
     )
     body = _join(
         head,
         _rows_block(item.rows),
         [
-            "23:30 之后学生仍可改期，名单会随改期与实际返宿更新；23:30 不是申请截止时间。",
+            "24:00 是该业务夜首次申请截止；之后仍可改期与撤销，名单实时更新。",
             "学生实际到达后，按门铃或刷卡记录照常登记即可。",
         ],
         _tail(item),

@@ -3,7 +3,7 @@
 两类账号来源（R18、R19）：
 - `UNIFIED_SCHOOL`：学生、辅导员、园区使用者走学校统一身份，默认带合成校内邮箱。
 - `STAFF_LOCAL`：宿管是雇佣人员，没有校内账户；此处的 `dorm` 是演示种子，
-  运行时由园区经 `/staff-accounts` 注册的新工号落在 `local_staff_accounts` 表。
+  运行时由园区经 `/staff-accounts` 注册的新工号落在 `users` 表的 `source=STAFF_LOCAL` 行。
 
 B 的 DirectoryProvider 落地后，住宿/负责/代班关系由目录模块提供，
 这里的 home_building_ids 只作为固定管理楼栋的占位，代班范围由 duty 叠加。

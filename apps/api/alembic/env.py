@@ -9,6 +9,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
+from app.db.base import Base
+import app.db.models  # noqa: F401  把全仓库唯一的表定义注册进 Base.metadata
 
 config = context.config
 if config.config_file_name is not None:
@@ -18,10 +20,6 @@ database_url = get_settings().database_url
 if not database_url:
     raise RuntimeError("缺少 DATABASE_URL，请先在 apps/api/.env 配置。")
 config.set_main_option("sqlalchemy.url", database_url)
-
-# 各模块模型统一注册到 app.db.Base；B 追加目录模型后无需再改这里。
-from app.db import Base  # noqa: E402
-import app.db.models  # noqa: F401,E402
 
 target_metadata = Base.metadata
 
@@ -38,6 +36,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    supplied = config.attributes.get("connection")
+    if supplied is not None:
+        context.configure(connection=supplied, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

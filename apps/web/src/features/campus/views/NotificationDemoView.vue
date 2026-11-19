@@ -12,15 +12,15 @@ import type {
 import { describeError } from '@/shared/stores/session'
 
 /** 与后端 RECIPIENT_ROLES 对齐，只用于过滤可选收件人；放行与否仍由服务端判定。 */
-const TEMPLATE_ROLES: Record<NotificationTemplate, Role[]> = {
+const TEMPLATE_ROLES: Record<ManualTemplate, Role[]> = {
   NIGHT_ROSTER: ['DORM_MANAGER'],
   DAILY_REPORT: ['COUNSELOR'],
   WEEKLY_REPORT: ['COUNSELOR'],
   RISK_ALERT: ['COUNSELOR', 'DORM_MANAGER'],
 }
 
-const TEMPLATE_LABELS: Record<NotificationTemplate, string> = {
-  NIGHT_ROSTER: '23:30 宿管名单快照',
+const TEMPLATE_LABELS: Record<ManualTemplate, string> = {
+  NIGHT_ROSTER: '24:00 宿管名单快照',
   DAILY_REPORT: '辅导员日报',
   WEEKLY_REPORT: '辅导员周报',
   RISK_ALERT: '风险跟进提示',
@@ -43,7 +43,8 @@ interface Recipient {
 const seed = ref<DemoAccount[]>([])
 const staff = ref<StaffAccount[]>([])
 const jobs = ref<NotificationJob[]>([])
-const template = ref<NotificationTemplate>('NIGHT_ROSTER')
+type ManualTemplate = Exclude<NotificationTemplate, 'DORM_APPROVED' | 'DORM_RESCHEDULED' | 'DORM_CANCELLED'>
+const template = ref<ManualTemplate>('NIGHT_ROSTER')
 const picked = ref<string[]>([])
 const students = ref('')
 const deliverNow = ref(true)

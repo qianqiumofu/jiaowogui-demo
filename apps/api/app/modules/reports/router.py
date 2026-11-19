@@ -52,6 +52,16 @@ def weekly(guarded: ReadDep, db: SessionDep, request: Request, service_date: Ser
 
 
 @router.get("/subscriptions")
-def subscriptions(guarded: SubscribeDep) -> dict:
-    # 订阅关系要落表，迁移号排在 B 的头之后，此处继续保持占位。
-    raise not_implemented("M4", "报告订阅")
+def subscriptions(guarded:SubscribeDep):
+    from app.modules.reports.subscriptions import get
+    return get(guarded.user_id)
+
+from pydantic import BaseModel
+class SubscriptionRequest(BaseModel):
+    daily:bool
+    weekly:bool
+
+@router.put("/subscriptions")
+def update_subscriptions(payload:SubscriptionRequest,guarded:SubscribeDep,db:SessionDep,request:Request):
+    from app.modules.reports.subscriptions import save
+    return save(db,guarded.user_id,payload.daily,payload.weekly,request.app.state.clock.now())

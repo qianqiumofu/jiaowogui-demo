@@ -1,0 +1,16 @@
+{
+  "building_id": "bldg_a1",
+  "items": [
+    {
+      "student_id": "stu_synth_0004",
+      "school_id": "2023S0004",
+      "display_name": "合成学生04",
+      "building_id": "bldg_a1",
+      "room_no": "A1-304",
+      "college_name": "合成工程学院",
+      "grade": "2023",
+      "gender": "MALE"
+    }
+  ],
+  "next_cursor": null
+}

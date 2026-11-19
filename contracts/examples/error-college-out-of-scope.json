@@ -1,0 +1,6 @@
+{
+  "code": "OUT_OF_SCOPE",
+  "message": "学院负责人只能管理本学院教师和学生的负责职责。",
+  "request_id": "req_synth_001",
+  "details": {}
+}

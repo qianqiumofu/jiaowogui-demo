@@ -36,7 +36,7 @@ class PassState(str, Enum):
 def to_business(moment: datetime) -> datetime:
     """与 business_iso 同口径：无时区按业务时区解释，有则换算。"""
     tz = ZoneInfo(get_settings().business_timezone)
-    return moment if moment.tzinfo else moment.replace(tzinfo=tz)
+    return moment.astimezone(tz) if moment.tzinfo else moment.replace(tzinfo=tz)
 
 
 @dataclass(frozen=True)

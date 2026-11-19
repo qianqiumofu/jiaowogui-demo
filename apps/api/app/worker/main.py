@@ -24,19 +24,22 @@ from app.worker.registry import HANDLERS, claim_due_jobs, mark_failed, mark_succ
 LOGGER = logging.getLogger("jiaowogui.worker")
 
 
-def run_once(clock: Clock, lease: timedelta) -> int:
+def run_once(clock: Clock, lease: timedelta, *, schedule: bool = False) -> int:
+    if schedule:
+        from app.worker.scheduler import schedule_due
+        schedule_due(clock)
     handled = 0
     for job in claim_due_jobs(clock.now(), lease):
         handler = HANDLERS.get(job["job_type"])
         if handler is None:
-            mark_failed(job["id"], f"no handler for {job['job_type']}", clock.now())
+            mark_failed(job["id"], f"no handler for {job['job_type']}", clock.now(),job["attempts"])
             continue
         try:
             handler(job)
-            mark_succeeded(job["id"], clock.now())
+            mark_succeeded(job["id"], clock.now(),job["attempts"])
         except Exception as exc:  # noqa: BLE001 - 任务失败必须落库重试，不能让 worker 退出
             LOGGER.exception("job %s failed", job["id"])
-            mark_failed(job["id"], str(exc), clock.now())
+            mark_failed(job["id"], str(exc), clock.now(),job["attempts"])
         handled += 1
     return handled
 
@@ -56,14 +59,14 @@ def main() -> None:
         LOGGER.info("worker loop start, handlers=%s", sorted(HANDLERS))
         while True:
             try:
-                run_once(clock, timedelta(seconds=60))
+                run_once(clock, timedelta(seconds=60),schedule=True)
             except ApiError as exc:
                 LOGGER.error("scan skipped: %s (set DATABASE_URL in apps/api/.env and start postgres)", exc.code)
             time.sleep(args.interval)
         return
 
     try:
-        LOGGER.info("single pass handled=%d", run_once(clock, timedelta(seconds=60)))
+        LOGGER.info("single pass handled=%d", run_once(clock, timedelta(seconds=60),schedule=True))
     except ApiError as exc:
         LOGGER.error("scan skipped: %s (set DATABASE_URL in apps/api/.env and start postgres)", exc.code)
 

@@ -1185,8 +1185,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 报告订阅关系（占位）
-         * @description 订阅要落表，迁移号排在 B 的头之后，正式版接通前保持 501。
+         * 当前用户的报告订阅关系
+         * @description 持久化日报/周报订阅；风险投递配置与普通报告偏好独立。
          */
         get: {
             parameters: {
@@ -1197,8 +1197,71 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 能力未实现 */
-                501: {
+                /** @description 成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReportSubscription"];
+                    };
+                };
+                /** @description 动作、范围或输入被拒 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * 保存日报周报偏好，风险订阅独立
+         * @description 持久化日报/周报订阅；风险投递配置与普通报告偏好独立。
+         */
+        put: operations["put_reports_subscriptions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buildings/{building_id}/tonight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 宿管当晚名单
+         * @description 动作 building:tonight 仅授予宿管，且只能命中当前有效值班楼栋（R11）。 每晚 24:00（业务夜 D 的 D+1 00:00）落一份该业务夜的汇总基准并给当班阿姨推一条人数消息， 之后仅改期与撤销实时进名单并标异动。名单只含 service_date 等于所查业务夜的预约， 06:00 一到自动切次夜；前一晚的通行情况到 /return-records 按业务夜回查。 名单联 B 的正式返宿记录显示门禁通行（已通行 X / 共 N 人），通行不推送。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    building_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 当晚名单 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BuildingTonight"];
+                    };
+                };
+                /** @description 角色无该动作，或楼栋不在有效值班范围 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1216,17 +1279,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/buildings/{building_id}/tonight": {
+    "/directory/students/{student_id}/contact": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** 宿管当晚名单 */
+        /**
+         * 当晚当班范围内的联系方式
+         * @description 动作 contact:read_duty 仅授予宿管，收件人须在该生所在楼栋此刻当班； 学生不存在与不在范围返回同一个 OUT_OF_SCOPE，避免用状态码探测名册（docs/08 字段级权限）。
+         */
         get: {
             parameters: {
                 query?: never;
+                header?: never;
+                path: {
+                    student_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 联系方式 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StudentContact"];
+                    };
+                };
+                /** @description 无动作权限或不在有效值班范围 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directory/buildings/{building_id}/residents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 现场补录用本楼栋名册检索
+         * @description 动作 building_residents:read_duty 仅授予宿管，用于 24:00 后按门铃返宿时手动选取学生。 在调用者当前有效值班范围内按姓名或学号（`q` 子串，二者任一命中）检索本楼栋当晚住宿学生， 锁定姓名、学号、学院、年级、寝室等必要身份；楼栋不在值班范围一律 OUT_OF_SCOPE（R11）。 名册不含联系方式——补录只需要身份，联系方式另走 `contact:read_duty`。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 姓名或学号子串；留空返回本楼栋当晚全量名册。 */
+                    q?: string;
+                };
                 header?: never;
                 path: {
                     building_id: string;
@@ -1235,8 +1354,17 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 能力未实现 */
-                501: {
+                /** @description 命中的学生身份列表（按学号升序） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResidentList"];
+                    };
+                };
+                /** @description 角色无该动作，或楼栋不在有效值班范围 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1261,29 +1389,118 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 正式返宿记录（唯一写入方为 B） */
+        /**
+         * 返宿记录与二维码使用情况
+         * @description 唯一写入方是 B 的 returns 模块。动作 return:read_scoped 只授予辅导员与宿管： 辅导员按负责学生过滤，宿管按有效值班楼栋过滤，园区与学生 403。 service_date 缺省取此刻所属业务夜；前一晚的情况在本页按业务夜回查。
+         */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    service_date?: string;
+                    building_id?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description 列表 */
+                /** @description 当夜清单：有码的按码列，无码的人工补录也列（pass_status 为空） */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ItemList"];
+                        "application/json": components["schemas"]["ReturnRecords"];
+                    };
+                };
+                /** @description 角色无该动作，或楼栋不在有效值班范围 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/return-records/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 宿管现场补录返宿
+         * @description 动作 manual_return:create 只授予宿管。补录与扫码共用同一唯一约束 （student_id, service_date），因此同一夜只有一条返宿事实； occurred_at 必须与所声称业务夜同夜且不晚于服务端当前时间。
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        student_id: string;
+                        building_id: string;
+                        /** Format: date */
+                        service_date?: string;
+                        /** Format: date-time */
+                        occurred_at?: string;
+                        gate_id?: string;
+                        evidence?: {
+                            [key: string]: unknown;
+                        };
+                        /** @description 同一回执重放只产生一条记录 */
+                        idempotency_key?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description 正式返宿记录（重放返回同一条） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReturnRecord"];
+                    };
+                };
+                /** @description 角色无该动作，或楼栋/学生不在有效值班范围 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description 缺少字段、时间无时区或发生时间与业务夜不属于同一夜 */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1297,7 +1514,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 值班与代班范围 */
+        /**
+         * 值班与代班范围
+         * @description 宿管只列本人班次，园区列已指派班次，其他获授读取动作的角色不返回他人班次。
+         */
         get: {
             parameters: {
                 query?: never;
@@ -1307,19 +1527,29 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description 列表 */
+                /** @description 成功 */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ItemList"];
+                        "application/json": components["schemas"]["DutyAssignmentList"];
+                    };
+                };
+                /** @description 动作、范围或输入被拒 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
         };
         put?: never;
-        post?: never;
+        /** 园区指派值班或代班，宿管不可自行扩权 */
+        post: operations["post_duty-assignments"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1337,7 +1567,7 @@ export interface paths {
         put?: never;
         /**
          * 跨楼栋代班切换
-         * @description 动作 duty:switch 仅授予宿管；生效区间与值班范围校验在 M1 冻结。
+         * @description 园区指派代班的兼容入口；宿管不能自授跨楼栋范围。
          */
         post: {
             parameters: {
@@ -1346,19 +1576,23 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DutyAssignmentRequest"];
+                };
+            };
             responses: {
-                /** @description 当前角色未被授予 duty:switch */
-                403: {
+                /** @description 成功 */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Error"];
+                        "application/json": components["schemas"]["DutyAssignment"];
                     };
                 };
-                /** @description 能力未实现 */
-                501: {
+                /** @description 动作、范围或输入被拒 */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1368,6 +1602,110 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 园区端全校晚归统计
+         * @description 动作 statistics:read 只授予园区，数据范围固定全校（R14）。 可按学院、片区、楼栋、年级、性别筛选；人数、晚归夜数、返宿次数三值分列， 取消、领码与未确认返宿不计实际晚归（R10、R15）。 归属默认按业务夜发生时快照（住宿按 `residences` 生效区间、年级按年份推算）， `attribution=current` 切换为当前归属口径。 预约人数与未确认人数经共享报告读模型计算；取消不计，未确认仅表示没有匹配到正式返宿记录。 两个日期都不传时统计「当前业务夜往前 14 个业务夜」（Demo 默认，见 `docs/13-待确认事项.md`）； 只传一个日期就是那一夜。响应里的 `range` 回显实际统计到的区间。
+         */
+        get: operations["get_campus_statistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/statistics/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 园区统计筛选器选项
+         * @description 动作 campus:query 只授予园区；返回学院、片区、楼栋、年级、性别、晚归来源的可选值。 只读 `organizations`、`buildings`、`students` 的目录行，不返回个人字段。
+         */
+        get: operations["get_statistics_filters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人的导出任务
+         * @description 只列当前用户发起的任务，新的在前；超过保留期的行内容已清空，`downloadable=false`。
+         */
+        get: operations["list_campus_exports"];
+        put?: never;
+        /**
+         * 发起受控导出
+         * @description 动作 export:create 只授予园区（R11 字段级权限）。导出内容永远是 `/statistics` 的聚合结果， 不含学生明细，所以联系方式与身份天然不在范围内。`params.date_from/date_to` 必须显式给出， 审计要能回答「导的是哪几夜」。接口只登记任务并排队 EXPORT_BUILD，渲染由 worker 完成， 因此 201 返回的资源通常是 PENDING；同一 `idempotency_key` 重复提交返回同一任务。
+         */
+        post: operations["create_campus_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 导出任务状态
+         * @description 只有发起人能查到自己的任务；不存在或不属于本人统一返回 404，不泄露他人任务。
+         */
+        get: operations["get_campus_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 下载导出 CSV
+         * @description UTF-8 带 BOM 的 CSV，首列为分组维度的展示名，其后固定人数、晚归夜数、返宿次数、 扫码返宿次数、人工补录次数、在册人数；预约与未确认两列因来源未落地而不进文件。 生成中或失败返回 409，内容已过保留期返回 410。
+         */
+        get: operations["download_campus_export"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1385,19 +1723,84 @@ export interface paths {
         put?: never;
         /**
          * 模拟终端扫码核销
-         * @description 使用设备身份认证，不使用学生会话；契约细节在 M3 冻结。
+         * @description 独立设备身份；成功回执才产生正式返宿。失败不产生记录，未知保持占用并由 worker 查询模拟网关对账，不恢复旧码。
          */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header: {
+                    "x-device-id": string;
+                    "x-device-token": string;
+                };
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description 二维码令牌明文，服务端只按摘要匹配 */
+                        code: string;
+                        /**
+                         * @default SUCCEEDED
+                         * @enum {string}
+                         */
+                        result?: "SUCCEEDED" | "FAILED" | "UNKNOWN";
+                        /**
+                         * @default SUCCEEDED
+                         * @enum {string}
+                         */
+                        reconcile_result?: "SUCCEEDED" | "FAILED";
+                    };
+                };
+            };
             responses: {
-                /** @description 能力未实现 */
-                501: {
+                /** @description 放行或重复扫码 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScanAttempt"];
+                    };
+                };
+                /** @description DEVICE_UNKNOWN / DEVICE_UNAUTHORIZED */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description GATE_MISMATCH / NIGHT_ACCESS_ENDED，门禁或时段不符 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description PASS_NOT_FOUND，码不存在 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description PASS_REVOKED / PASS_CONSUMED / RETURN_EXISTS，改期作废或当夜名额已被占用 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description PASS_EXPIRED，超过有效期且库内已标记为 EXPIRED */
+                410: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1743,12 +2146,324 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 当前学校基础身份与获授职责 */
+        get: operations["get_me_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/residence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人住宿信息（不可自行修改） */
+        get: operations["get_me_residence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/management/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 授权范围内的教师与管理人员 */
+        get: operations["get_management_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/management/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 职责与范围授予记录 */
+        get: operations["get_management_grants"];
+        put?: never;
+        /** 上级授予职责；学院负责人仅可分配本学院学生 */
+        post: operations["post_management_grants"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/management/grants/{grant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 撤回职责，旧会话即时失效 */
+        delete: operations["delete_management_grants_grant_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/management/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 授权范围内只追加的管理审计 */
+        get: operations["get_management_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directory/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 按学院专业年级班级筛选范围内学生 */
+        get: operations["get_directory_students"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/directory/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 学生筛选器的范围内候选值 */
+        get: operations["get_directory_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/verification-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 模拟人脸与现场核验；凭证消费与签码同事务 */
+        post: operations["post_verification-sessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/verification-sessions/{verification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人核验审计结果，不重复返回码明文 */
+        get: operations["get_verification-sessions_verification_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/return-records/self": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 学生本人正式记录，绝不读取他人 */
+        get: operations["get_return-records_self"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/return-records/{return_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 范围内正式记录的只追加纠错历史 */
+        get: operations["get_return-records_return_id_corrections"];
+        put?: never;
+        /** 宿管追加更正证据，不覆盖原始记录 */
+        post: operations["post_return-records_return_id_corrections"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk-events/{event_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 负责教师或当班宿管解决事件 */
+        post: operations["post_risk-events_event_id_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 当前版本化 Demo 风险规则 */
+        get: operations["get_risk-policy"];
+        /** 园区更新规则版本，不能基于超时创建风险 */
+        put: operations["put_risk-policy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/duty-assignments/{duty_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 园区撤销未来或当前指派并保留审计 */
+        delete: operations["delete_duty-assignments_duty_id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/access/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 设备身份认证的异步通行回执 */
+        post: operations["post_integrations_access_events"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/return-records/{return_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 本人或负责范围内正式记录的只追加证据 */
+        get: operations["get_return_evidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk-events/{event_id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 负责教师或当班宿管确认风险跟进 */
+        post: operations["ack_risk_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        Role: "STUDENT" | "DORM_MANAGER" | "COUNSELOR" | "CAMPUS";
+        /**
+         * @description 基础学生/教师身份由学校确认；COUNSELOR、IDEOLOGY、COLLEGE_ADMIN、CAMPUS 由上级部门授予；AUTH_ADMIN 仅由合成启动配置提供。
+         * @enum {string}
+         */
+        Role: "STUDENT" | "DORM_MANAGER" | "COUNSELOR" | "IDEOLOGY" | "TEACHER" | "COLLEGE_ADMIN" | "AUTH_ADMIN" | "CAMPUS";
         /**
          * @description 账号来源。UNIFIED_SCHOOL 走学校统一身份并带校内邮箱； STAFF_LOCAL 是园区为本系统注册的雇佣人员工号账号，无邮箱，通知只走站内待办。
          * @enum {string}
@@ -1777,6 +2492,7 @@ export interface components {
             /** @description 园区授权标记，如 ALL_AUTHORIZED */
             scope?: string;
             resolved_by: string;
+            college_org_ids?: string[];
         } & {
             [key: string]: unknown;
         };
@@ -1794,6 +2510,9 @@ export interface components {
             account_source: components["schemas"]["AccountSource"];
             /** @description 报告与预警邮件的投递地址；STAFF_LOCAL 为 null，只落站内待办。 */
             email?: string | null;
+            identity_types?: ("STUDENT" | "TEACHER" | "EMPLOYEE")[];
+            college_org_id?: string | null;
+            position_title?: string;
         };
         StaffAccount: {
             id: string;
@@ -1861,6 +2580,11 @@ export interface components {
             service_date: string;
             /** @description 当夜门禁时段 [start, end)，端点带时区；客户端只用它列举可选时刻，不自行判定。 */
             night_window: string[];
+            /**
+             * Format: date-time
+             * @description 最晚可选返宿时刻（门禁结束前一个核验窗口，默认 05:30），端点带时区；客户端列举返宿档位以此为含上界，保证核验窗口不越过 06:00。
+             */
+            latest_return_at: string;
             offset_minutes: number;
         };
         /** @enum {string} */
@@ -1957,10 +2681,10 @@ export interface components {
             message: string;
         };
         /**
-         * @description NIGHT_ROSTER 每晚 23:30 宿管名单快照（R12）；DAILY_REPORT 次日辅导员日报、 WEEKLY_REPORT 周一辅导员周报（R13）；RISK_ALERT 多次或连续触发的跟进提示（R16）， 收件人只能是负责辅导员与当班宿管。
+         * @description NIGHT_ROSTER 每晚 24:00 宿管名单快照（R12）；DAILY_REPORT 次日辅导员日报、 WEEKLY_REPORT 周一辅导员周报（R13）；RISK_ALERT 多次或连续触发的跟进提示（R16）， 收件人只能是负责辅导员与当班宿管。
          * @enum {string}
          */
-        NotificationTemplate: "NIGHT_ROSTER" | "DAILY_REPORT" | "WEEKLY_REPORT" | "RISK_ALERT";
+        NotificationTemplate: "NIGHT_ROSTER" | "DAILY_REPORT" | "WEEKLY_REPORT" | "RISK_ALERT" | "DORM_APPROVED" | "DORM_RESCHEDULED" | "DORM_CANCELLED";
         /**
          * @description 投递渠道，服务端按收件人账号来源单选（R18、R19）：统一身份账户走 EMAIL， 宿管工号账号走 INBOX；同一事件对同一收件人不同时出现在两个渠道。
          * @enum {string}
@@ -2027,8 +2751,10 @@ export interface components {
             items: components["schemas"]["NotificationJob"][];
             next_cursor: string | null;
         };
+        /** @enum {string} */
+        ManualNotificationTemplate: "NIGHT_ROSTER" | "DAILY_REPORT" | "WEEKLY_REPORT" | "RISK_ALERT";
         NotificationDispatchRequest: {
-            template: components["schemas"]["NotificationTemplate"];
+            template: components["schemas"]["ManualNotificationTemplate"];
             /**
              * Format: date
              * @description 省略时取服务端当前业务夜（客户端不得自行判定跨日）。
@@ -2116,14 +2842,473 @@ export interface components {
             }[];
             next_cursor: string | null;
         };
+        /**
+         * @description 24:00 汇总之后的异动。RESCHEDULED 是改期、CANCELLED 是撤销，均按 R07/R12 允许； ADDED_AFTER_SUMMARY 只可能来自越权或跨夜异常，用于对账，不代表申请被放行。
+         * @enum {string}
+         */
+        ChangeFlag: "RESCHEDULED" | "CANCELLED" | "ADDED_AFTER_SUMMARY";
+        /** @description 名单不含联系方式；点开发消息时另走 /directory/students/{student_id}/contact。 通行情况只来自 B 的正式返宿记录（R10）：reservation_status=FULFILLED 不等于已返宿。 现场补录的按门铃学生没有预约，作为新行出现：`reservation_status=NONE`、 `planned_return_at` 取该条人工补录记录的返宿时刻（录入时刻），并标 `ADDED_AFTER_SUMMARY`。 已被补录的、本就有预约的学生仍走预约行（晚归时间保留预约时间），不重复成两条。 */
+        TonightItem: {
+            student_id: string;
+            school_id: string;
+            display_name: string;
+            room_no: string;
+            college_name?: string;
+            grade?: string;
+            /** Format: date-time */
+            planned_return_at: string;
+            /** @enum {string} */
+            reservation_status: "ACTIVE" | "CANCELLED" | "FULFILLED" | "CLOSED" | "NONE";
+            reservation_version?: number | null;
+            /** Format: date-time */
+            updated_at?: string | null;
+            change_flag?: components["schemas"]["ChangeFlag"] | null;
+            /**
+             * @description PENDING 未通行，ENTERED 二维码核销放行，MANUAL_ENTERED 宿管人工补录。
+             * @enum {string}
+             */
+            return_status: "PENDING" | "ENTERED" | "MANUAL_ENTERED";
+            /** Format: date-time */
+            entered_at?: string | null;
+            gate_id?: string | null;
+            /** @enum {string|null} */
+            return_source?: "QR" | "MANUAL" | null;
+        };
+        BuildingTonight: {
+            building_id: string;
+            /**
+             * Format: date
+             * @description 严格等于此刻所属业务夜；06:00 一到自动切次夜（R04、R12）。
+             */
+            service_date: string;
+            /** Format: date-time */
+            summary_generated_at?: string | null;
+            /** @description 已通行 X / 共 N 人；通行只是读展示，不产生任何推送。 */
+            counters: {
+                total: number;
+                entered: number;
+            };
+            items: components["schemas"]["TonightItem"][];
+            next_cursor: string | null;
+        };
+        /**
+         * @description ISSUED 为当前有效码；过期只在扫码时落库，报表按 expires_at 派生为 EXPIRED， 不生成任何通知任务（R15）。
+         * @enum {string}
+         */
+        PassStatus: "ISSUED" | "CONSUMED" | "EXPIRED" | "REVOKED";
+        /** @enum {string} */
+        ReturnSource: "QR" | "MANUAL";
+        ScanAttempt: {
+            attempt_id?: string;
+            /** @enum {string} */
+            attempt_status: "PENDING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
+            pass_id: string;
+            /** @description 同码重扫或回执重放，指向既有记录而非新增 */
+            duplicate: boolean;
+            device_id: string;
+            building_id: string;
+            gate_id: string;
+            gate_name?: string | null;
+            return_id?: string | null;
+            return_source?: components["schemas"]["ReturnSource"] | null;
+            /** Format: date-time */
+            occurred_at: string;
+        };
+        ReturnRecord: {
+            return_id: string;
+            student_id: string;
+            /** Format: date */
+            service_date: string;
+            source: components["schemas"]["ReturnSource"];
+            pass_id?: string | null;
+            gate_id?: string | null;
+            gate_name?: string | null;
+            reservation_id?: string | null;
+            /**
+             * Format: date-time
+             * @description 返宿发生时间，人工回填不改变它。
+             */
+            occurred_at: string;
+            /**
+             * Format: date-time
+             * @description 记录时间
+             */
+            recorded_at: string;
+            evidence?: {
+                [key: string]: unknown;
+            };
+            idempotency_key?: string;
+        };
+        /** @description 一行一条二维码使用情况；人工补录没有码，pass_id 与 pass_status 为空但返宿字段照样填。 */
+        ReturnRecordItem: {
+            pass_id?: string | null;
+            student_id: string;
+            school_id: string;
+            display_name: string;
+            reservation_id?: string | null;
+            building_id: string;
+            gate_id?: string | null;
+            reservation_version?: number | null;
+            /** Format: date */
+            service_date: string;
+            /** Format: date-time */
+            window_start?: string | null;
+            /** Format: date-time */
+            window_end?: string | null;
+            /** Format: date-time */
+            issued_at?: string | null;
+            /** Format: date-time */
+            expires_at?: string | null;
+            /** Format: date-time */
+            used_at?: string | null;
+            pass_status?: components["schemas"]["PassStatus"] | null;
+            return_id?: string | null;
+            return_source?: components["schemas"]["ReturnSource"] | null;
+            /** Format: date-time */
+            returned_at?: string | null;
+        };
+        ReturnRecords: {
+            /** Format: date */
+            service_date: string;
+            building_id: string | null;
+            counters: {
+                /** @description 当前状态为 ISSUED 的码 */
+                issued: number;
+                consumed: number;
+                /** @description 含库内 EXPIRED 与按 expires_at 派生的过期 */
+                expired: number;
+                /** @description 改期或撤销时作废的码 */
+                revoked: number;
+                /** @description 去重后已产生返宿事实的人数 */
+                returned: number;
+            };
+            items: components["schemas"]["ReturnRecordItem"][];
+            next_cursor: string | null;
+        };
+        StudentContact: {
+            student_id: string;
+            school_id?: string;
+            display_name?: string;
+            building_id: string;
+            room_no: string;
+            /** @enum {string} */
+            gender?: "MALE" | "FEMALE";
+            phone: string | null;
+        };
+        Resident: {
+            student_id: string;
+            school_id: string;
+            display_name: string;
+            building_id: string;
+            room_no: string;
+            college_name?: string;
+            grade?: string | null;
+            /** @enum {string} */
+            gender?: "MALE" | "FEMALE";
+        };
+        ResidentList: {
+            building_id: string;
+            items: components["schemas"]["Resident"][];
+            next_cursor: string | null;
+        };
+        StatisticsTotals: {
+            /** @description 去晚归人数（区间内至少一夜有正式返宿） */
+            people: number;
+            /** @description 晚归夜数：去重（学生 × 业务夜） */
+            nights: number;
+            /** @description 返宿次数：返宿记录条数 */
+            returns: number;
+            /** @description 来源 QR 的返宿次数 */
+            qr_returns: number;
+            /** @description 来源 MANUAL 的返宿次数 */
+            manual_returns: number;
+            /** @description 筛选范围内的在册人数（分母） */
+            enrolled: number;
+            /** @description 区间内非取消预约的去重学生人数 */
+            reservations: number | null;
+            /** @description 区间内至少一夜预约未匹配正式返宿记录的去重学生人数，不计实际晚归 */
+            unconfirmed: number | null;
+        };
+        StatisticRow: components["schemas"]["StatisticsTotals"] & {
+            value: string | null;
+            label: string;
+        };
+        StatisticDay: components["schemas"]["StatisticsTotals"] & {
+            /** Format: date */
+            service_date: string;
+        };
+        Statistics: {
+            /** @enum {string} */
+            group_by: "none" | "college" | "park" | "building" | "grade" | "gender" | "trend";
+            /** @enum {string} */
+            attribution: "snapshot" | "current";
+            range: {
+                /** Format: date */
+                date_from: string;
+                /** Format: date */
+                date_to: string;
+            };
+            filters: {
+                [key: string]: string;
+            };
+            totals: components["schemas"]["StatisticsTotals"];
+            rows: components["schemas"]["StatisticRow"][];
+            by_day: components["schemas"]["StatisticDay"][];
+            /** @description 依赖能力未落地导致的空字段登记，如 RESERVATION_SOURCE_UNAVAILABLE */
+            data_gaps: string[];
+        };
+        StatisticsOptions: {
+            colleges: {
+                org_id: string;
+                name: string;
+            }[];
+            parks: {
+                org_id: string;
+                name: string;
+                building_count: number;
+            }[];
+            buildings: {
+                building_id: string;
+                name: string;
+                code: string;
+                park_org_id: string;
+            }[];
+            grades: string[];
+            genders: ("MALE" | "FEMALE")[];
+            return_sources: ("QR" | "MANUAL")[];
+        };
+        ExportRequest: {
+            /**
+             * @description 受控导出的唯一口径来源；明细导出未开放
+             * @enum {string}
+             */
+            report: "STATISTICS";
+            /** @description 与 `/statistics` 完全同一套口径参数，未知键在创建时就被拒绝。 `date_from`、`date_to` 必填；`group_by` 缺省 park，`attribution` 缺省 snapshot。 */
+            params: {
+                /** Format: date */
+                date_from: string;
+                /** Format: date */
+                date_to: string;
+                college_org_id?: string;
+                park_org_id?: string;
+                building_id?: string;
+                grade?: string;
+                /** @enum {string} */
+                gender?: "MALE" | "FEMALE";
+                /** @enum {string} */
+                return_source?: "QR" | "MANUAL";
+                /** @enum {string} */
+                group_by?: "none" | "college" | "park" | "building" | "grade" | "gender" | "trend";
+                /** @enum {string} */
+                attribution?: "snapshot" | "current";
+            };
+            /** @description 同一键重复提交返回同一任务，不重复排队 */
+            idempotency_key?: string | null;
+        };
+        ExportJob: {
+            export_id: string;
+            /** @enum {string} */
+            report: "STATISTICS";
+            /**
+             * @description DONE 且内容未过保留期才可下载
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "DONE" | "FAILED";
+            /** @description 发起人 user_id，只有本人能列出与下载 */
+            requested_by: string;
+            params: {
+                [key: string]: unknown;
+            };
+            file_name: string | null;
+            /** @description CSV 数据行数，不含口径说明与合计行 */
+            row_count: number | null;
+            error: string | null;
+            idempotency_key: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            done_at: string | null;
+            /**
+             * Format: date-time
+             * @description done_at + EXPORT_RETENTION_DAYS；到期后内容清空，任务行留作审计
+             */
+            expires_at: string | null;
+            downloadable: boolean;
+        };
+        ExportJobList: {
+            items: components["schemas"]["ExportJob"][];
+            next_cursor: string | null;
+        };
         Error: {
-            /** @description 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR, VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED, RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND, ACCOUNT_DISABLED, LOGIN_NAME_TAKEN, STAFF_ACCOUNT_NOT_FOUND, NOTIFICATION_NOT_FOUND, NOTIFICATION_RECIPIENT_FORBIDDEN, NOTIFICATION_TEMPLATE_MISMATCH。 新增错误码必须同时更新文档与前端处理。 */
+            /** @description 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR, RESERVATION_CREATION_CLOSED, VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED, RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND, ACCOUNT_DISABLED, LOGIN_NAME_TAKEN, STAFF_ACCOUNT_NOT_FOUND, NOTIFICATION_NOT_FOUND, NOTIFICATION_RECIPIENT_FORBIDDEN, NOTIFICATION_TEMPLATE_MISMATCH。 FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, OUT_OF_SCOPE, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR, DEVICE_UNKNOWN, DEVICE_UNAUTHORIZED, PASS_NOT_FOUND, PASS_REVOKED, PASS_EXPIRED, PASS_CONSUMED, GATE_MISMATCH, NIGHT_ACCESS_ENDED, RETURN_EXISTS, EXPORT_NOT_FOUND, EXPORT_NOT_READY, EXPORT_FAILED, EXPORT_EXPIRED。 新增错误码必须同时更新文档与前端处理。 */
             code: string;
             message: string;
             request_id: string;
             details: {
                 [key: string]: unknown;
             };
+        };
+        UserProfile: {
+            user_id: string;
+            display_name: string;
+            identity_types: string[];
+            roles: components["schemas"]["Role"][];
+            college_org_id: string | null;
+            student_id: string | null;
+            position_title: string;
+        };
+        RoleGrantRequest: {
+            user_id: string;
+            role: components["schemas"]["Role"];
+            student_ids?: string[];
+            college_org_ids?: string[];
+        };
+        RoleGrant: {
+            id: string;
+            user_id: string;
+            role: components["schemas"]["Role"];
+            student_ids: string[];
+            college_org_ids: string[];
+            active: boolean;
+        };
+        StudentDirectoryItem: {
+            student_id: string;
+            school_id: string;
+            display_name: string;
+            college_org_id: string;
+            college_name: string;
+            grade: string;
+            major: string;
+            class_name: string;
+            building_id: string | null;
+        };
+        VerificationRequest: {
+            reservation_id: string;
+            expected_version: number;
+            face_result: boolean;
+            presence_result: boolean;
+        };
+        IssuedPass: {
+            pass_id: string;
+            token: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            issued_at: string;
+            building_id: string;
+            /** Format: date */
+            service_date: string;
+            qr_svg: string;
+        };
+        VerificationResult: {
+            verification_id: string;
+            status: string;
+            simulated: boolean;
+            pass: components["schemas"]["IssuedPass"];
+        };
+        ReportSubscription: {
+            daily: boolean;
+            weekly: boolean;
+        };
+        RiskEvent: {
+            actions?: {
+                id: string;
+                actor_user_id: string;
+                /** @enum {string} */
+                action: "ACK" | "RESOLVE";
+                note: string;
+                /** Format: date-time */
+                created_at: string;
+            }[];
+            id: string;
+            student_id: string;
+            /** Format: date */
+            service_date: string;
+            /** @enum {string} */
+            status: "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
+            rule_version: string;
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        RiskActionRequest: {
+            note: string;
+        };
+        RiskPolicy: {
+            version: string;
+            window_nights: number;
+            times_threshold: number;
+            consecutive_threshold: number;
+        };
+        DutyAssignmentRequest: {
+            staff_user_id: string;
+            building_id: string;
+            /** Format: date-time */
+            shift_start: string;
+            /** Format: date-time */
+            shift_end: string;
+        };
+        ReturnCorrectionRequest: {
+            note: string;
+            /** Format: date-time */
+            occurred_at?: string;
+        };
+        AccessReceiptRequest: {
+            event_id: string;
+            attempt_id: string;
+            /** @enum {string} */
+            status: "SUCCEEDED" | "FAILED" | "UNKNOWN";
+            /** Format: date-time */
+            occurred_at: string;
+        };
+        DemoObject: {
+            [key: string]: unknown;
+        };
+        DemoObjectList: {
+            items: components["schemas"]["DemoObject"][];
+            next_cursor: string | null;
+        };
+        RoleGrantList: {
+            items: components["schemas"]["RoleGrant"][];
+            next_cursor: string | null;
+        };
+        StudentDirectoryList: {
+            items: components["schemas"]["StudentDirectoryItem"][];
+            next_cursor: string | null;
+        };
+        RiskEventList: {
+            items: components["schemas"]["RiskEvent"][];
+            next_cursor: string | null;
+        };
+        ManagedUser: components["schemas"]["UserProfile"] & {
+            school_id: string;
+            login_name: string;
+            source: string;
+        };
+        DutyAssignment: {
+            duty_id: string;
+            staff_user_id: string;
+            building_id: string;
+            /** Format: date-time */
+            shift_start: string;
+            /** Format: date-time */
+            shift_end: string;
+            is_substitute: boolean;
+        };
+        VerificationError: components["schemas"]["Error"];
+        ManagedUserList: {
+            items: components["schemas"]["ManagedUser"][];
+            next_cursor: string | null;
+        };
+        DutyAssignmentList: {
+            items: components["schemas"]["DutyAssignment"][];
+            next_cursor: string | null;
         };
     };
     responses: never;
@@ -2139,4 +3324,971 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    put_reports_subscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportSubscription"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSubscription"];
+                };
+            };
+            /** @description 动作、范围或输入被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "post_duty-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DutyAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyAssignment"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_campus_statistics: {
+        parameters: {
+            query?: {
+                /** @description 业务夜区间起（含） */
+                date_from?: string;
+                /** @description 业务夜区间止（含） */
+                date_to?: string;
+                college_org_id?: string;
+                /** @description 片区（organizations 的 CAMPUS_PARK 行） */
+                park_org_id?: string;
+                building_id?: string;
+                grade?: string;
+                gender?: "MALE" | "FEMALE";
+                return_source?: "QR" | "MANUAL";
+                /** @description 分组维度；none 只回总计行，trend 走 by_day */
+                group_by?: "none" | "college" | "park" | "building" | "grade" | "gender" | "trend";
+                attribution?: "snapshot" | "current";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 三值统计 + 分组明细 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Statistics"];
+                };
+            };
+            /** @description 角色无该动作，或园区范围未解析成功 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_statistics_filters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 各维度的候选值 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatisticsOptions"];
+                };
+            };
+            /** @description 角色无该动作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    list_campus_exports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 导出任务列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJobList"];
+                };
+            };
+            /** @description 角色无该动作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    create_campus_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequest"];
+            };
+        };
+        responses: {
+            /** @description 任务已登记（PENDING），完成后 same export_id 可下载 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description 角色无该动作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 口径非法（缺区间、未知键、report 不支持），创建即拒绝 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_campus_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 任务资源 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description 角色无该动作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    download_campus_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV 文本 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description 角色无该动作 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_NOT_READY 或 EXPORT_FAILED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_EXPIRED，超过 EXPORT_RETENTION_DAYS */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_me_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_me_residence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_management_users: {
+        parameters: {
+            query?: {
+                q?: string;
+                college_org_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagedUserList"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_management_grants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleGrantList"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_management_grants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleGrant"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    delete_management_grants_grant_id: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_management_audit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObjectList"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_directory_students: {
+        parameters: {
+            query?: {
+                college_org_id?: string;
+                major?: string;
+                grade?: string;
+                class_name?: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentDirectoryList"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_directory_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "post_verification-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "get_verification-sessions_verification_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "get_return-records_self": {
+        parameters: {
+            query?: {
+                service_date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnRecords"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "get_return-records_return_id_corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObjectList"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "post_return-records_return_id_corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnCorrectionRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "post_risk-events_event_id_resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskEvent"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "get_risk-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskPolicy"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "put_risk-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskPolicy"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskPolicy"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "delete_duty-assignments_duty_id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                duty_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    post_integrations_access_events: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-device-id": string;
+                "x-device-token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessReceiptRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObject"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_return_evidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 独立证据，不覆盖原始记录 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoObjectList"];
+                };
+            };
+        };
+    };
+    ack_risk_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskEvent"];
+                };
+            };
+            /** @description 动作、范围或输入被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+}

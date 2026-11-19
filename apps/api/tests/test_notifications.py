@@ -30,7 +30,7 @@ pytestmark = pytest.mark.usefixtures("clean_db")
 
 
 def now_bj() -> datetime:
-    return datetime.now(TZ)
+    return datetime(2026,11,15,18,0,tzinfo=TZ)
 
 
 def gate_time(hour: int = 1, minute: int = 30) -> datetime:
@@ -48,7 +48,7 @@ def create_reservation(client: TestClient, token: str, planned: datetime) -> dic
 
 
 def offset_clock(client: TestClient, target: datetime) -> None:
-    minutes = int((target - now_bj()).total_seconds() // 60)
+    minutes = int((target - datetime.now(TZ)).total_seconds() // 60)
     assert client.post(f"{API}/demo/clock", json={"offset_minutes": minutes}).status_code == 200
 
 
@@ -89,15 +89,24 @@ def drain(now: datetime | None = None) -> int:
     clock = (
         build_clock()
         if now is None
-        else OffsetClock(get_settings().business_timezone, now - now_bj())
+        else OffsetClock(get_settings().business_timezone, now - datetime.now(TZ))
     )
-    return run_once(clock, timedelta(seconds=60))
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+    from app.core.db import get_engine
+    from app.db.models import BackgroundJob
+    def manual_done():
+        with Session(get_engine()) as db:
+            return {j.id for j in db.scalars(select(BackgroundJob).where(BackgroundJob.status == "DONE")) if not j.payload.get("reservation_event")}
+    before = manual_done()
+    run_once(clock, timedelta(seconds=60))
+    return len(manual_done() - before)
 
 
 def inbox(client: TestClient, token: str) -> list[dict]:
     response = client.get(f"{API}/notifications", headers=auth(token))
     assert response.status_code == 200, response.text
-    return response.json()["items"]
+    return [r for r in response.json()["items"] if not r["template"].startswith("DORM_")]
 
 
 def assert_no_reminder_words(body: str) -> None:
@@ -140,11 +149,11 @@ def test_roster_lands_as_inbox_todo_without_email(
     assert item["template"] == "NIGHT_ROSTER" and item["status"] == "SENT"
     assert "bldg_a1" in item["subject"]
     assert "2023S0001 张三" in item["body"]
-    assert "23:30 之后学生仍可改期" in item["body"]
+    assert "24:00 是该业务夜首次申请截止" in item["body"]
     assert "本条为站内待办，无需回复。" in item["body"]
     assert_no_reminder_words(item["body"])
 
-    jobs = client.get(f"{API}/notification-jobs", headers=auth(campus_token)).json()["items"]
+    jobs = manual_jobs(client, campus_token)
     assert [(row["id"], row["status"], row["attempts"]) for row in jobs] == [
         (job["id"], "DONE", 1)
     ]
@@ -199,7 +208,7 @@ def test_dispatch_is_idempotent_until_the_job_is_consumed(
     assert second["deduped"] is True
     assert second["jobs"][0]["id"] == first["jobs"][0]["id"]
 
-    jobs = client.get(f"{API}/notification-jobs", headers=auth(campus_token)).json()["items"]
+    jobs = manual_jobs(client, campus_token)
     assert len(jobs) == 1
 
     assert drain() == 1
@@ -235,7 +244,7 @@ def test_risk_alert_never_targets_campus(client, campus_token, reservation) -> N
 @pytest.mark.parametrize(
     ("template", "recipient", "message"),
     [
-        ("NIGHT_ROSTER", COUNSELOR_ID, "23:30"),
+        ("NIGHT_ROSTER", COUNSELOR_ID, "24:00"),
         ("DAILY_REPORT", DORM_ID, "日报"),
         ("WEEKLY_REPORT", CAMPUS_ID, "周报"),
     ],
@@ -264,7 +273,7 @@ def test_risk_alert_requires_demo_threshold_before_dispatch(
         "times": 3,
         "consecutive": 3,
     }
-    assert client.get(f"{API}/notification-jobs", headers=auth(campus_token)).json()["items"] == []
+    assert manual_jobs(client, campus_token) == []
 
 
 def test_risk_alert_reaches_counselor_and_dorm_after_three_consecutive_nights(
@@ -321,11 +330,12 @@ def test_planned_time_comes_from_server_schedule(client, campus_token, reservati
         recipients=[COUNSELOR_ID],
         deliver_now=False,
     )
-    assert roster["jobs"][0]["planned_at"].endswith("T23:30:00+08:00")
+    assert roster["jobs"][0]["planned_at"].endswith("T00:00:00+08:00")
     assert daily["jobs"][0]["planned_at"].endswith("T08:30:00+08:00")
-    assert daily["jobs"][0]["planned_at"][:10] != roster["jobs"][0]["planned_at"][:10]
+    assert daily["jobs"][0]["planned_at"][:10] == roster["jobs"][0]["planned_at"][:10]
 
-    # 队列按服务端算出的计划时刻放行，早于 23:30 一律不领取。
+    drain()  # 先排空独立的预约通过事件；其计划时刻不受名单汇总影响。
+    # 队列按服务端算出的计划时刻放行，早于 24:00 不领取名单。
     planned = datetime.fromisoformat(roster["jobs"][0]["planned_at"]).astimezone(timezone.utc)
     assert claim_due_jobs(planned - timedelta(minutes=1), timedelta(seconds=60)) == []
     claimed = claim_due_jobs(planned + timedelta(minutes=1), timedelta(seconds=60))
@@ -461,6 +471,12 @@ def test_disabled_staff_recipient_is_skipped_instead_of_retrying_forever(
         )
     finally:
         session.close()
-    jobs = client.get(f"{API}/notification-jobs", headers=auth(campus)).json()["items"]
+    jobs = manual_jobs(client, campus)
     assert rows == 0
     assert [row["status"] for row in jobs] == ["DONE"]
+
+
+def manual_jobs(client, token):
+    response = client.get(f"{API}/notification-jobs", headers=auth(token))
+    assert response.status_code == 200
+    return [j for j in response.json()["items"] if not j["template"].startswith("DORM_")]

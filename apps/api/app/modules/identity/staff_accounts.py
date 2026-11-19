@@ -2,6 +2,8 @@
 
 规则来源：R19——雇佣人员不进校内统一身份，账号、楼栋范围、口令重置与停用只由园区授予。
 因此本模块的所有入口都挂在 `staff_account:*` 动作上，且仅 `CAMPUS` 角色可用。
+工号账号与统一身份同存 `users` 表，靠 `source=STAFF_LOCAL` 区分；这类人员没有校内编号，
+`school_id` 按登录名登记，与 `to_person` 给出的身份保持一致。
 """
 
 from __future__ import annotations
@@ -14,16 +16,16 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import Clock
 from app.core.errors import ApiError
-from app.db.models import LocalStaffAccount
+from app.db.models import User
 from app.modules.identity.adapters import mock_accounts
 from app.modules.identity.schemas import AccountSource, Person, Role
 
 PASSWORD_BYTES = 9
+STAFF_LOCAL = AccountSource.STAFF_LOCAL.value
 
 
 def new_staff_id(login_name: str) -> str:
-    slug = "".join(ch if ch.isalnum() else "_" for ch in login_name)[:24]
-    return f"usr_staff_{slug}"
+    return f"usr_staff_{secrets.token_hex(10)}"
 
 
 def generate_password() -> str:
@@ -31,9 +33,9 @@ def generate_password() -> str:
     return secrets.token_urlsafe(PASSWORD_BYTES)
 
 
-def to_person(account: LocalStaffAccount) -> Person:
+def to_person(account: User) -> Person:
     return Person(
-        user_id=account.id,
+        user_id=account.user_id,
         school_id=account.login_name,
         display_name=account.display_name,
         login_name=account.login_name,
@@ -41,6 +43,7 @@ def to_person(account: LocalStaffAccount) -> Person:
         account_source=AccountSource.STAFF_LOCAL,
         email=None,
         home_building_ids=list(account.building_ids),
+        identity_types=["EMPLOYEE"],position_title="宿管",
     )
 
 
@@ -57,11 +60,17 @@ def _clean_building_ids(building_ids: list[str]) -> list[str]:
             )
         if value not in cleaned:
             cleaned.append(value)
+    from app.modules.directory.service import assert_buildings_exist
+    assert_buildings_exist(cleaned)
     return cleaned
 
 
-def get_account(session: Session, account_id: str) -> LocalStaffAccount:
-    account = session.get(LocalStaffAccount, account_id)
+def _local_only():
+    return select(User).where(User.source == STAFF_LOCAL)
+
+
+def get_account(session: Session, account_id: str) -> User:
+    account = session.scalar(_local_only().where(User.user_id == account_id))
     if account is None:
         raise ApiError(
             404,
@@ -74,14 +83,16 @@ def get_account(session: Session, account_id: str) -> LocalStaffAccount:
 
 def create_account(
     session: Session, *, login_name: str, display_name: str, building_ids: list[str]
-) -> tuple[LocalStaffAccount, str]:
+) -> tuple[User, str]:
     login = login_name.strip()
     if login in mock_accounts.PEOPLE_BY_LOGIN:
         raise _login_name_taken(login)
-    account = LocalStaffAccount(
-        id=new_staff_id(login),
+    account = User(
+        user_id=new_staff_id(login),
+        school_id=login,
         login_name=login,
         display_name=display_name.strip(),
+        source=STAFF_LOCAL,
         password=generate_password(),
         building_ids=_clean_building_ids(building_ids),
         status="ACTIVE",
@@ -104,8 +115,8 @@ def _login_name_taken(login: str) -> ApiError:
     )
 
 
-def list_accounts(session: Session) -> list[LocalStaffAccount]:
-    return list(session.scalars(select(LocalStaffAccount).order_by(LocalStaffAccount.login_name)))
+def list_accounts(session: Session) -> list[User]:
+    return list(session.scalars(_local_only().order_by(User.login_name)))
 
 
 def update_account(
@@ -114,7 +125,7 @@ def update_account(
     *,
     display_name: str | None,
     building_ids: list[str] | None,
-) -> LocalStaffAccount:
+) -> User:
     account = get_account(session, account_id)
     if display_name is not None:
         account.display_name = display_name.strip()
@@ -124,14 +135,14 @@ def update_account(
     return account
 
 
-def reset_password(session: Session, account_id: str) -> tuple[LocalStaffAccount, str]:
+def reset_password(session: Session, account_id: str) -> tuple[User, str]:
     account = get_account(session, account_id)
     account.password = generate_password()
     session.commit()
     return account, account.password
 
 
-def disable(session: Session, clock: Clock, account_id: str) -> LocalStaffAccount:
+def disable(session: Session, clock: Clock, account_id: str) -> User:
     """停用只作用于工号账号；统一账户的冻结归校方身份系统，本系统无入口。"""
     account = get_account(session, account_id)
     account.status = "DISABLED"
@@ -149,7 +160,7 @@ def _open_session() -> SqlSession:
     return SqlSession(get_engine())
 
 
-def _assert_active(account: LocalStaffAccount) -> None:
+def _assert_active(account: User) -> None:
     if account.status == "ACTIVE":
         return
     raise ApiError(
@@ -157,18 +168,16 @@ def _assert_active(account: LocalStaffAccount) -> None:
         "ACCOUNT_DISABLED",
         "该工号账号已由园区停用，请联系园区管理员。",
         {
-            "staff_account_id": account.id,
+            "staff_account_id": account.user_id,
             "disabled_at": account.disabled_at.isoformat() if account.disabled_at else None,
         },
     )
 
 
 def find_person_by_login(login_name: str, password: str) -> Person | None:
-    """登录分派的第二跳：种子账号未命中时查本地工号表。"""
+    """登录分派的第二跳：种子账号未命中时查库里的工号账号。"""
     with _open_session() as session:
-        account = session.scalar(
-            select(LocalStaffAccount).where(LocalStaffAccount.login_name == login_name)
-        )
+        account = session.scalar(_local_only().where(User.login_name == login_name))
         if account is None:
             return None
         if password != account.password:
@@ -180,8 +189,25 @@ def find_person_by_login(login_name: str, password: str) -> Person | None:
 def find_person(user_id: str) -> Person | None:
     """按 user_id 取工号账号的当前身份，让改绑楼栋与停用立刻作用于已有会话。"""
     with _open_session() as session:
-        account = session.get(LocalStaffAccount, user_id)
+        account = session.scalar(_local_only().where(User.user_id == user_id))
         if account is None:
             return None
         _assert_active(account)
         return to_person(account)
+
+
+def fixed_buildings(user_id):
+    with _open_session() as db:
+        user=db.scalar(_local_only().where(User.user_id==user_id,User.status=="ACTIVE"))
+        return list(user.building_ids) if user else []
+
+
+def fixed_staff(building_id):
+    with _open_session() as db:
+        return [r.user_id for r in db.scalars(_local_only().where(User.status=="ACTIVE")) if building_id in r.building_ids]
+
+
+def active_staff(user_ids):
+    if not user_ids:return []
+    with _open_session() as db:
+        return list(db.scalars(select(User.user_id).where(User.user_id.in_(user_ids),User.status=="ACTIVE",User.source==STAFF_LOCAL)))

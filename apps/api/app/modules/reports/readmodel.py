@@ -54,9 +54,13 @@ def scope_for(student_ids: list[str] | None) -> dict[str, object]:
 def fetch(
     session: Session, clock: Clock, *, service_date: date | None = None, student_ids: list[str] | None = None
 ) -> list[Reservation]:
-    return reservation_service.list_reservations(
-        session, clock, scope=scope_for(student_ids), service_date=service_date
-    )
+    items=reservation_service.list_reservations(session,clock,scope=scope_for(student_ids),service_date=service_date)
+    from app.modules.directory.service import label_for
+    for item in items:
+        label=label_for(item.student_id)
+        if label:
+            item.directory_school_id,item.directory_display_name=label[0],label[1].split("（")[0]
+    return items
 
 
 def night_rows(
@@ -122,7 +126,7 @@ def caliber_notes() -> list[str]:
 
 
 def _row(res: Reservation) -> dict:
-    school_id, display_name = labels(res.student_id)
+    school_id, display_name = reservation_labels(res)
     return {
         "student_id": res.student_id,
         "school_id": school_id,
@@ -183,3 +187,30 @@ def weekly_view(
         ],
         "caliber_notes": caliber_notes(),
     }
+
+
+def statistic_facts(conn, *, start: date, end: date) -> list[dict]:
+    """园区预约分母的领域出口；目录维度与正式返宿事实均经其负责人服务读取。"""
+    from app.core.clock import build_clock
+    from app.modules.directory.service import statistic_students
+    from app.modules.returns.service import returned_keys
+    returned = returned_keys(conn, start, end)
+    dimensions = {}
+    with Session(bind=conn) as session:
+        rows = range_rows(session, build_clock(), start=start, end=end)
+        out = []
+        for res in rows:
+            if res.status == "CANCELLED":
+                continue
+            if res.service_date not in dimensions:
+                dimensions[res.service_date] = statistic_students(conn, res.service_date)
+            meta = dimensions[res.service_date].get(res.student_id)
+            if meta is not None:
+                out.append({**meta, "service_date": res.service_date, "unconfirmed": (res.student_id, res.service_date) not in returned})
+        return out
+
+
+def reservation_labels(res):
+    if hasattr(res,"directory_display_name"):
+        return res.directory_school_id,res.directory_display_name
+    return labels(res.student_id)

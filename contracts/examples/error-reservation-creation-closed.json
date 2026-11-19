@@ -1,0 +1,9 @@
+{
+  "code": "RESERVATION_CREATION_CLOSED",
+  "message": "该业务夜首次申请已截止，已有预约仍可改期与撤销。",
+  "request_id": "req_synth_closed",
+  "details": {
+    "service_date": "2026-11-15",
+    "closes_at": "2026-11-16T00:00:00+08:00"
+  }
+}

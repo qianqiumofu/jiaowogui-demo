@@ -10,3 +10,6 @@ tzdata==2026.6
 httpx==0.28.1
 pytest==9.2.0
 PyYAML==6.0.3
+
+# 本地 SVG 二维码编码，无 Pillow 或外部图片服务。
+qrcode==8.2

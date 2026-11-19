@@ -2,823 +2,1325 @@ openapi: 3.1.0
 info:
   title: 交我归 Demo API
   version: 0.1.0
-  description: >-
-    两人共用契约。规则以业务规则基线为唯一来源；字段 snake_case，枚举大写字符串，
-    时间带时区，ID 为不透明字符串。列表响应统一 items/next_cursor，成功响应直接返回对象本身，
+  description: 两人共用契约。规则以业务规则基线为唯一来源；字段 snake_case，枚举大写字符串， 时间带时区，ID 为不透明字符串。列表响应统一 items/next_cursor，成功响应直接返回对象本身，
     错误响应统一 code/message/request_id/details。
-
 servers:
-  - url: http://localhost:8000/api/v1
-
+- url: http://localhost:8000/api/v1
 paths:
   /auth/demo-accounts:
     get:
       summary: 列出合成登录账号
       responses:
-        "200":
+        '200':
           description: 账号列表
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/DemoAccount"
-
+                  $ref: '#/components/schemas/DemoAccount'
   /auth/mock-login:
     post:
       summary: 模拟学校统一身份登录或工号账号登录
-      description: >-
-        同一入口按登录名分派：校内统一账户走模拟统一身份（R18），
-        园区分发的宿管工号账号走本地工号表校验口令（R19）。
-        账号被停用时返回 ACCOUNT_DISABLED。
+      description: 同一入口按登录名分派：校内统一账户走模拟统一身份（R18）， 园区分发的宿管工号账号走本地工号表校验口令（R19）。 账号被停用时返回 ACCOUNT_DISABLED。
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [login_name, password]
+              required:
+              - login_name
+              - password
               properties:
-                login_name: { type: string }
-                password: { type: string }
+                login_name:
+                  type: string
+                password:
+                  type: string
       responses:
-        "200":
+        '200':
           description: 会话令牌与上下文
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthSession"
-        "401":
+                $ref: '#/components/schemas/AuthSession'
+        '401':
           description: 口令错误或账号不存在
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "403":
+                $ref: '#/components/schemas/Error'
+        '403':
           description: 账号已被园区停用
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /me:
     get:
       summary: 当前会话上下文
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 上下文
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SessionContext"
-        "401":
+                $ref: '#/components/schemas/SessionContext'
+        '401':
           description: 未认证
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /auth/role-switch:
     post:
       summary: 切换到该账号已被授予的另一角色
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [role]
+              required:
+              - role
               properties:
-                role: { $ref: "#/components/schemas/Role" }
+                role:
+                  $ref: '#/components/schemas/Role'
       responses:
-        "200":
+        '200':
           description: 新会话令牌（旧令牌立即失效）
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthSession"
-        "403":
+                $ref: '#/components/schemas/AuthSession'
+        '403':
           description: 该账号未被授予此角色
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /auth/logout:
     post:
       summary: 退出并销毁会话
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 已退出
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LogoutResult"
-
+                $ref: '#/components/schemas/LogoutResult'
   /authz/actions:
     get:
       summary: 当前角色可执行动作
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 动作清单
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AllowedActions"
-
+                $ref: '#/components/schemas/AllowedActions'
   /authz/scope-check:
     get:
       summary: 检查当前会话对某动作的授权与数据范围
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - name: action
-          in: query
-          schema: { type: string, default: "reservation:create" }
+      - name: action
+        in: query
+        schema:
+          type: string
+          default: reservation:create
       responses:
-        "200":
+        '200':
           description: 允许时返回角色、动作与范围
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ScopeCheck"
-        "403":
+                $ref: '#/components/schemas/ScopeCheck'
+        '403':
           description: 动作未授予或范围无法解析
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /authz/roles:
     get:
       summary: 系统角色枚举列表
       responses:
-        "200":
+        '200':
           description: 角色列表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RoleList"
-
+                $ref: '#/components/schemas/RoleList'
   /staff-accounts:
     get:
       summary: 列出园区分发的宿管工号账号
-      description: >-
-        仅园区角色（staff_account:read）。这些账号属雇佣人员，不在学校统一身份目录内（R19）。
-      security: [{ bearerAuth: [] }]
+      description: 仅园区角色（staff_account:read）。这些账号属雇佣人员，不在学校统一身份目录内（R19）。
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 工号账号列表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StaffAccountList"
-        "403":
+                $ref: '#/components/schemas/StaffAccountList'
+        '403':
           description: 非园区角色一律拒绝
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
     post:
       summary: 注册宿管工号账号并绑定固定管理楼栋
-      description: >-
-        仅园区角色（staff_account:create）。角色固定为 DORM_MANAGER，楼栋范围即后续该账号的数据范围。
-        初始口令由服务端生成，只在本响应里返回一次（Demo 默认，见基线「报告、风险和权限默认」）。
+      description: 仅园区角色（staff_account:create）。角色固定为 DORM_MANAGER，楼栋范围即后续该账号的数据范围。 初始口令由服务端生成，只在本响应里返回一次（Demo 默认，见基线「报告、风险和权限默认」）。
         楼栋是否存在由 B 的目录接口校验，目录落地前只校验非空与去重。
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/StaffAccountCreateRequest"
+              $ref: '#/components/schemas/StaffAccountCreateRequest'
       responses:
-        "201":
+        '201':
           description: 已创建，含一次性初始口令
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StaffAccountSecret"
-        "403":
+                $ref: '#/components/schemas/StaffAccountSecret'
+        '403':
           description: 非园区角色
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "409":
+                $ref: '#/components/schemas/Error'
+        '409':
           description: 登录名已被占用
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "422":
+                $ref: '#/components/schemas/Error'
+        '422':
           description: 楼栋列表为空或字段格式不合法
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /staff-accounts/{staff_account_id}:
     patch:
       summary: 改绑管理楼栋或显示名
       description: 仅园区角色（staff_account:update）。改绑只影响后续会话范围解析，不写历史记录。
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/StaffAccountId"
+      - $ref: '#/components/parameters/StaffAccountId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/StaffAccountUpdateRequest"
+              $ref: '#/components/schemas/StaffAccountUpdateRequest'
       responses:
-        "200":
+        '200':
           description: 更新后的账号
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StaffAccount"
-        "403":
+                $ref: '#/components/schemas/StaffAccount'
+        '403':
           description: 非园区角色
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "404":
+                $ref: '#/components/schemas/Error'
+        '404':
           description: 账号不存在
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /staff-accounts/{staff_account_id}/reset-password:
     post:
       summary: 重置工号账号口令
       description: 仅园区角色（staff_account:reset）。新口令只在本响应返回一次，旧会话立即失效。
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/StaffAccountId"
+      - $ref: '#/components/parameters/StaffAccountId'
       responses:
-        "200":
+        '200':
           description: 含新口令
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StaffAccountSecret"
-        "403":
+                $ref: '#/components/schemas/StaffAccountSecret'
+        '403':
           description: 非园区角色
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "404":
+                $ref: '#/components/schemas/Error'
+        '404':
           description: 账号不存在
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /staff-accounts/{staff_account_id}/disable:
     post:
       summary: 停用宿管工号账号
       description: 仅园区角色（staff_account:disable）。停用后登录被拒，已签发会话在下次请求时失效。
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/StaffAccountId"
+      - $ref: '#/components/parameters/StaffAccountId'
       responses:
-        "200":
+        '200':
           description: 已停用的账号
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StaffAccount"
-        "403":
+                $ref: '#/components/schemas/StaffAccount'
+        '403':
           description: 非园区角色
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "404":
+                $ref: '#/components/schemas/Error'
+        '404':
           description: 账号不存在
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reservations:
     get:
       summary: 按授权范围列出预约
-      description: >-
-        学生返回本人当夜及历史预约；辅导员与宿管在目录关系落地前返回
-        SCOPE_UNRESOLVED，不得返回空列表伪装成「没有预约」。
-      security: [{ bearerAuth: [] }]
+      description: 学生返回本人当夜及历史预约；辅导员与宿管在目录关系落地前返回 SCOPE_UNRESOLVED，不得返回空列表伪装成「没有预约」。
+      security:
+      - bearerAuth: []
       parameters:
-        - name: service_date
-          in: query
-          schema: { type: string, format: date }
+      - name: service_date
+        in: query
+        schema:
+          type: string
+          format: date
       responses:
-        "200":
+        '200':
           description: 预约列表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReservationList"
-        "403":
+                $ref: '#/components/schemas/ReservationList'
+        '403':
           description: 角色未授予 reservation:read，或范围依赖的目录关系未落地
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
     post:
       summary: 创建当日晚归预约
-      description: >-
-        service_date 由服务端时钟判定为当夜，客户端不可指定其他夜晚（R05）。
-        全部自动通过（R06）。当夜已存在 ACTIVE/FULFILLED 预约返回
-        RESERVATION_EXISTS；存在 CANCELLED 预约返回 RESERVATION_CANCELLED，
-        须走恢复接口复用同一 ID。
-        本预约若首次跨过演示配置的规则阈值，响应额外带 risk_notice（R16 的申请时弹窗）；
-        弹窗只是提示，不改变自动通过的结果，也不产生任何通知任务（R15）。
-      security: [{ bearerAuth: [] }]
+      description: service_date 由服务端时钟判定为当夜，客户端不可指定其他夜晚（R05）。 全部自动通过（R06）。当夜已存在 ACTIVE/FULFILLED 预约返回 RESERVATION_EXISTS；存在
+        CANCELLED 预约返回 RESERVATION_CANCELLED， 须走恢复接口复用同一 ID。 本预约若首次跨过演示配置的规则阈值，响应额外带 risk_notice（R16 的申请时弹窗）； 弹窗只是提示，不改变自动通过的结果，也不产生任何通知任务（R15）。
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [planned_return_at]
+              required:
+              - planned_return_at
               properties:
-                planned_return_at: { type: string, format: date-time }
-                reason: { type: string, maxLength: 500 }
+                planned_return_at:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+                  maxLength: 500
       responses:
-        "201":
+        '201':
           description: 已创建并自动通过；首次跨阈值时带申请弹窗事实
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Reservation"
-        "409":
+                $ref: '#/components/schemas/Reservation'
+        '409':
           description: 当夜已有预约或需走恢复
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reservations/tonight:
     get:
       summary: 当前业务夜的本人预约（服务端判定 service_date）
-      description: >-
-        供学生端使用，避免客户端推算业务日；无预约时返回 null。
-        仅学生角色可用。
-      security: [{ bearerAuth: [] }]
+      description: 供学生端使用，避免客户端推算业务日；无预约时返回 null。 仅学生角色可用。
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 预约对象或 null
           content:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "#/components/schemas/Reservation"
-                  - type: "null"
-
+                - $ref: '#/components/schemas/Reservation'
+                - type: 'null'
   /reservations/{reservation_id}:
     patch:
       summary: 改期或修改原因（次数不限）
-      description: >-
-        R07：不受原预约时间窗口约束，可改到本业务夜门禁时段内任意时间；
-        已返宿（FULFILLED）或业务夜已结束（CLOSED）返回 409
-        RESERVATION_NOT_EDITABLE。expected_version 过期返回 409 VERSION_CONFLICT。
-      security: [{ bearerAuth: [] }]
+      description: R07：不受原预约时间窗口约束，可改到本业务夜门禁时段内任意时间； 已返宿（FULFILLED）或业务夜已结束（CLOSED）返回 409 RESERVATION_NOT_EDITABLE。expected_version
+        过期返回 409 VERSION_CONFLICT。
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ReservationId"
+      - $ref: '#/components/parameters/ReservationId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [expected_version]
+              required:
+              - expected_version
               properties:
-                expected_version: { type: integer }
-                planned_return_at: { type: string, format: date-time }
-                reason: { type: string, maxLength: 500 }
+                expected_version:
+                  type: integer
+                planned_return_at:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+                  maxLength: 500
       responses:
-        "200":
+        '200':
           description: 更新后的预约
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Reservation"
-        "404":
+                $ref: '#/components/schemas/Reservation'
+        '404':
           description: 预约不存在或不属于当前范围
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "409":
+                $ref: '#/components/schemas/Error'
+        '409':
           description: 版本冲突或当前状态不可修改
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reservations/{reservation_id}/cancel:
     post:
       summary: 取消预约
       description: 已返宿（FULFILLED）或业务夜结束（CLOSED）不可取消。取消保留 ID 供恢复。
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ReservationId"
+      - $ref: '#/components/parameters/ReservationId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [expected_version]
+              required:
+              - expected_version
               properties:
-                expected_version: { type: integer }
+                expected_version:
+                  type: integer
       responses:
-        "200":
+        '200':
           description: 取消后的预约
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Reservation"
-        "404":
+                $ref: '#/components/schemas/Reservation'
+        '404':
           description: 预约不存在或不属于当前范围
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "409":
+                $ref: '#/components/schemas/Error'
+        '409':
           description: 版本冲突或当前状态不可取消
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reservations/{reservation_id}/restore:
     post:
       summary: 恢复已取消的当夜预约（复用同一 ID）
       description: 基线「取消后恢复同一预约 ID，不能新建第二条」；仅 CANCELLED 可恢复。
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ReservationId"
+      - $ref: '#/components/parameters/ReservationId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [expected_version]
+              required:
+              - expected_version
               properties:
-                expected_version: { type: integer }
+                expected_version:
+                  type: integer
       responses:
-        "200":
+        '200':
           description: 恢复后的预约
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Reservation"
-        "404":
+                $ref: '#/components/schemas/Reservation'
+        '404':
           description: 预约不存在或不属于当前范围
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "409":
+                $ref: '#/components/schemas/Error'
+        '409':
           description: 版本冲突或当前状态不可恢复
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reservations/{reservation_id}/revisions:
     get:
       summary: 预约修订历史（只追加）
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ReservationId"
+      - $ref: '#/components/parameters/ReservationId'
       responses:
-        "200":
+        '200':
           description: 按 version 升序的修订记录
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RevisionList"
-        "404":
+                $ref: '#/components/schemas/RevisionList'
+        '404':
           description: 预约不存在或不属于当前范围
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /risk-events:
     get:
       summary: 按授权范围列出风险事件
-      security: [{ bearerAuth: [] }]
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 列表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ItemList"
-        "403":
+                $ref: '#/components/schemas/ItemList'
+        '403':
           description: 无权或负责关系缺失
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reports/daily:
     get:
       summary: 辅导员日报事实（按需读取）
-      description: >-
-        只返回当前账号负责关系内、指定业务夜的预约事实与按 `reports.summary` 口径算出的计数
-        （report:read）。缺省看服务端当前时刻的前一晚；传入晚于当前业务日的日期返回 422。
-        与 08:30 投递的日报邮件同取数、同口径，两处数字不可能不一致。未确认返宿只是没有匹配到
-        通行记录，接口不据此生成任何提醒（R15）。负责关系尚未同步时返回 403 `SCOPE_UNRESOLVED`。
-      security: [{ bearerAuth: [] }]
+      description: 只返回当前账号负责关系内、指定业务夜的预约事实与按 `reports.summary` 口径算出的计数 （report:read）。缺省看服务端当前时刻的前一晚；传入晚于当前业务日的日期返回
+        422。 与 08:30 投递的日报邮件同取数、同口径，两处数字不可能不一致。未确认返宿只是没有匹配到 通行记录，接口不据此生成任何提醒（R15）。负责关系尚未同步时返回 403 `SCOPE_UNRESOLVED`。
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ServiceDate"
+      - $ref: '#/components/parameters/ServiceDate'
       responses:
-        "200":
+        '200':
           description: 当夜报告
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DailyReport"
-        "403":
+                $ref: '#/components/schemas/DailyReport'
+        '403':
           description: 无权或负责关系缺失
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "422":
+                $ref: '#/components/schemas/Error'
+        '422':
           description: 业务日期不可查看
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reports/weekly:
     get:
       summary: 辅导员周报事实（按需读取）
-      description: >-
-        以指定业务夜为末夜，向前覆盖 `weekly_report_nights` 个业务夜（含空夜，逐夜一行）。
-        计数与投递出去的周报正文同口径；一周内一个预约都没有也返回全零行，不返回空对象。
-      security: [{ bearerAuth: [] }]
+      description: 以指定业务夜为末夜，向前覆盖 `weekly_report_nights` 个业务夜（含空夜，逐夜一行）。 计数与投递出去的周报正文同口径；一周内一个预约都没有也返回全零行，不返回空对象。
+      security:
+      - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/ServiceDate"
+      - $ref: '#/components/parameters/ServiceDate'
       responses:
-        "200":
+        '200':
           description: 区间报告
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WeeklyReport"
-        "403":
+                $ref: '#/components/schemas/WeeklyReport'
+        '403':
           description: 无权或负责关系缺失
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "422":
+                $ref: '#/components/schemas/Error'
+        '422':
           description: 业务日期不可查看
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /reports/subscriptions:
-    get:
-      summary: 报告订阅关系（占位）
-      description: 订阅要落表，迁移号排在 B 的头之后，正式版接通前保持 501。
-      security: [{ bearerAuth: [] }]
+    put:
+      summary: 保存日报周报偏好，风险订阅独立
+      operationId: put_reports_subscriptions
       responses:
-        "501":
-          description: 能力未实现
+        '200':
+          description: 成功
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
-  /buildings/{building_id}/tonight:
-    get:
-      summary: 宿管当晚名单
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - name: building_id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        "501":
-          description: 能力未实现
+                $ref: '#/components/schemas/ReportSubscription'
+        '403':
+          description: 动作、范围或输入被拒
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
-  /return-records:
-    get:
-      summary: 正式返宿记录（唯一写入方为 B）
-      security: [{ bearerAuth: [] }]
-      responses:
-        "200":
-          description: 列表
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ItemList"
-
-  /duty-assignments:
-    get:
-      summary: 值班与代班范围
-      security: [{ bearerAuth: [] }]
-      responses:
-        "200":
-          description: 列表
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ItemList"
-
-  /duty-assignments/switch:
-    post:
-      summary: 跨楼栋代班切换
-      description: 动作 duty:switch 仅授予宿管；生效区间与值班范围校验在 M1 冻结。
-      security: [{ bearerAuth: [] }]
-      responses:
-        "403":
-          description: 当前角色未被授予 duty:switch
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "501":
-          description: 能力未实现
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /device/scan:
-    post:
-      summary: 模拟终端扫码核销
-      description: 使用设备身份认证，不使用学生会话；契约细节在 M3 冻结。
-      responses:
-        "501":
-          description: 能力未实现
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /notifications:
-    get:
-      summary: 我的模拟收件箱
-      description: >-
-        只返回当前会话本人作为收件人的条目（notification:read）。邮件类条目是已渲染正文的预览，
-        Demo 不真实发信；站内待办条目对应宿管工号账号。渠道由账号来源决定，客户端无法指定。
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - name: unread_only
-          in: query
-          schema: { type: boolean, default: false }
-      responses:
-        "200":
-          description: 收件箱列表
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotificationList"
-        "401":
-          description: 未认证
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /notifications/{notification_id}:
-    get:
-      summary: 读取一条通知的正文
-      description: 非本人收件条目按不存在处理（404），不泄露存在性。
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: "#/components/parameters/NotificationId"
-      responses:
-        "200":
-          description: 通知
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Notification"
-        "404":
-          description: 不存在或不属于当前收件人
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /notifications/{notification_id}/read:
-    post:
-      summary: 标记已读
-      description: 幂等（notification:mark_read）；重复标记返回同一条目，read_at 取首次时间。
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: "#/components/parameters/NotificationId"
-      responses:
-        "200":
-          description: 更新后的通知
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Notification"
-        "404":
-          description: 不存在或不属于当前收件人
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /notification-dispatch:
-    post:
-      summary: 演示投递：按模板渲染并入队通知任务
-      description: >-
-        仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与
-        值班关系派生（23:30 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警 → 辅导员 + 当班宿管），
-        在 B 的目录与 duty 落地前不开放自选收件人。
-        服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、
-        同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
-      security: [{ bearerAuth: [] }]
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NotificationDispatchRequest"
+              $ref: '#/components/schemas/ReportSubscription'
+      description: 持久化日报/周报订阅；风险投递配置与普通报告偏好独立。
+    get:
+      summary: 当前用户的报告订阅关系
+      description: 持久化日报/周报订阅；风险投递配置与普通报告偏好独立。
+      security:
+      - bearerAuth: []
       responses:
-        "202":
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSubscription'
+        '403':
+          description: 动作、范围或输入被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /buildings/{building_id}/tonight:
+    get:
+      summary: 宿管当晚名单
+      description: 动作 building:tonight 仅授予宿管，且只能命中当前有效值班楼栋（R11）。 每晚 24:00（业务夜 D 的 D+1 00:00）落一份该业务夜的汇总基准并给当班阿姨推一条人数消息，
+        之后仅改期与撤销实时进名单并标异动。名单只含 service_date 等于所查业务夜的预约， 06:00 一到自动切次夜；前一晚的通行情况到 /return-records 按业务夜回查。 名单联 B 的正式返宿记录显示门禁通行（已通行
+        X / 共 N 人），通行不推送。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: building_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 当晚名单
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildingTonight'
+        '403':
+          description: 角色无该动作，或楼栋不在有效值班范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /directory/students/{student_id}/contact:
+    get:
+      summary: 当晚当班范围内的联系方式
+      description: 动作 contact:read_duty 仅授予宿管，收件人须在该生所在楼栋此刻当班； 学生不存在与不在范围返回同一个 OUT_OF_SCOPE，避免用状态码探测名册（docs/08 字段级权限）。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: student_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 联系方式
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentContact'
+        '403':
+          description: 无动作权限或不在有效值班范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /directory/buildings/{building_id}/residents:
+    get:
+      summary: 现场补录用本楼栋名册检索
+      description: 动作 building_residents:read_duty 仅授予宿管，用于 24:00 后按门铃返宿时手动选取学生。 在调用者当前有效值班范围内按姓名或学号（`q` 子串，二者任一命中）检索本楼栋当晚住宿学生，
+        锁定姓名、学号、学院、年级、寝室等必要身份；楼栋不在值班范围一律 OUT_OF_SCOPE（R11）。 名册不含联系方式——补录只需要身份，联系方式另走 `contact:read_duty`。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: building_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 姓名或学号子串；留空返回本楼栋当晚全量名册。
+      responses:
+        '200':
+          description: 命中的学生身份列表（按学号升序）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResidentList'
+        '403':
+          description: 角色无该动作，或楼栋不在有效值班范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /return-records:
+    get:
+      summary: 返宿记录与二维码使用情况
+      description: 唯一写入方是 B 的 returns 模块。动作 return:read_scoped 只授予辅导员与宿管： 辅导员按负责学生过滤，宿管按有效值班楼栋过滤，园区与学生 403。 service_date
+        缺省取此刻所属业务夜；前一晚的情况在本页按业务夜回查。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: service_date
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: building_id
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 当夜清单：有码的按码列，无码的人工补录也列（pass_status 为空）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReturnRecords'
+        '403':
+          description: 角色无该动作，或楼栋不在有效值班范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /return-records/manual:
+    post:
+      summary: 宿管现场补录返宿
+      description: 动作 manual_return:create 只授予宿管。补录与扫码共用同一唯一约束 （student_id, service_date），因此同一夜只有一条返宿事实； occurred_at
+        必须与所声称业务夜同夜且不晚于服务端当前时间。
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - student_id
+              - building_id
+              properties:
+                student_id:
+                  type: string
+                building_id:
+                  type: string
+                service_date:
+                  type: string
+                  format: date
+                occurred_at:
+                  type: string
+                  format: date-time
+                gate_id:
+                  type: string
+                evidence:
+                  type: object
+                  additionalProperties: true
+                idempotency_key:
+                  type: string
+                  description: 同一回执重放只产生一条记录
+      responses:
+        '200':
+          description: 正式返宿记录（重放返回同一条）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReturnRecord'
+        '403':
+          description: 角色无该动作，或楼栋/学生不在有效值班范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 缺少字段、时间无时区或发生时间与业务夜不属于同一夜
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /duty-assignments:
+    post:
+      summary: 园区指派值班或代班，宿管不可自行扩权
+      operationId: post_duty-assignments
+      responses:
+        '201':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DutyAssignment'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DutyAssignmentRequest'
+    get:
+      summary: 值班与代班范围
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DutyAssignmentList'
+        '403':
+          description: 动作、范围或输入被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: 宿管只列本人班次，园区列已指派班次，其他获授读取动作的角色不返回他人班次。
+  /duty-assignments/switch:
+    post:
+      summary: 跨楼栋代班切换
+      description: 园区指派代班的兼容入口；宿管不能自授跨楼栋范围。
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DutyAssignment'
+        '403':
+          description: 动作、范围或输入被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DutyAssignmentRequest'
+  /statistics:
+    get:
+      summary: 园区端全校晚归统计
+      description: 动作 statistics:read 只授予园区，数据范围固定全校（R14）。 可按学院、片区、楼栋、年级、性别筛选；人数、晚归夜数、返宿次数三值分列， 取消、领码与未确认返宿不计实际晚归（R10、R15）。
+        归属默认按业务夜发生时快照（住宿按 `residences` 生效区间、年级按年份推算）， `attribution=current` 切换为当前归属口径。 预约人数与未确认人数经共享报告读模型计算；取消不计，未确认仅表示没有匹配到正式返宿记录。
+        两个日期都不传时统计「当前业务夜往前 14 个业务夜」（Demo 默认，见 `docs/13-待确认事项.md`）； 只传一个日期就是那一夜。响应里的 `range` 回显实际统计到的区间。
+      operationId: get_campus_statistics
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: date_from
+        in: query
+        description: 业务夜区间起（含）
+        schema:
+          type: string
+          format: date
+      - name: date_to
+        in: query
+        description: 业务夜区间止（含）
+        schema:
+          type: string
+          format: date
+      - name: college_org_id
+        in: query
+        schema:
+          type: string
+      - name: park_org_id
+        in: query
+        description: 片区（organizations 的 CAMPUS_PARK 行）
+        schema:
+          type: string
+      - name: building_id
+        in: query
+        schema:
+          type: string
+      - name: grade
+        in: query
+        schema:
+          type: string
+      - name: gender
+        in: query
+        schema:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+      - name: return_source
+        in: query
+        schema:
+          type: string
+          enum:
+          - QR
+          - MANUAL
+      - name: group_by
+        in: query
+        description: 分组维度；none 只回总计行，trend 走 by_day
+        schema:
+          type: string
+          enum:
+          - none
+          - college
+          - park
+          - building
+          - grade
+          - gender
+          - trend
+          default: park
+      - name: attribution
+        in: query
+        schema:
+          type: string
+          enum:
+          - snapshot
+          - current
+          default: snapshot
+      responses:
+        '200':
+          description: 三值统计 + 分组明细
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statistics'
+        '403':
+          description: 角色无该动作，或园区范围未解析成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /statistics/filters:
+    get:
+      summary: 园区统计筛选器选项
+      description: 动作 campus:query 只授予园区；返回学院、片区、楼栋、年级、性别、晚归来源的可选值。 只读 `organizations`、`buildings`、`students` 的目录行，不返回个人字段。
+      operationId: get_statistics_filters
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 各维度的候选值
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatisticsOptions'
+        '403':
+          description: 角色无该动作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /exports:
+    post:
+      summary: 发起受控导出
+      description: 动作 export:create 只授予园区（R11 字段级权限）。导出内容永远是 `/statistics` 的聚合结果， 不含学生明细，所以联系方式与身份天然不在范围内。`params.date_from/date_to`
+        必须显式给出， 审计要能回答「导的是哪几夜」。接口只登记任务并排队 EXPORT_BUILD，渲染由 worker 完成， 因此 201 返回的资源通常是 PENDING；同一 `idempotency_key`
+        重复提交返回同一任务。
+      operationId: create_campus_export
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '201':
+          description: 任务已登记（PENDING），完成后 same export_id 可下载
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '403':
+          description: 角色无该动作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 口径非法（缺区间、未知键、report 不支持），创建即拒绝
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: 本人的导出任务
+      description: 只列当前用户发起的任务，新的在前；超过保留期的行内容已清空，`downloadable=false`。
+      operationId: list_campus_exports
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 导出任务列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJobList'
+        '403':
+          description: 角色无该动作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /exports/{export_id}:
+    get:
+      summary: 导出任务状态
+      description: 只有发起人能查到自己的任务；不存在或不属于本人统一返回 404，不泄露他人任务。
+      operationId: get_campus_export
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: export_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 任务资源
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '403':
+          description: 角色无该动作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: EXPORT_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /exports/{export_id}/download:
+    get:
+      summary: 下载导出 CSV
+      description: UTF-8 带 BOM 的 CSV，首列为分组维度的展示名，其后固定人数、晚归夜数、返宿次数、 扫码返宿次数、人工补录次数、在册人数；预约与未确认两列因来源未落地而不进文件。 生成中或失败返回
+        409，内容已过保留期返回 410。
+      operationId: download_campus_export
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: export_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: CSV 文本
+          content:
+            text/csv:
+              schema:
+                type: string
+        '403':
+          description: 角色无该动作
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: EXPORT_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: EXPORT_NOT_READY 或 EXPORT_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: EXPORT_EXPIRED，超过 EXPORT_RETENTION_DAYS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /device/scan:
+    post:
+      summary: 模拟终端扫码核销
+      description: 独立设备身份；成功回执才产生正式返宿。失败不产生记录，未知保持占用并由 worker 查询模拟网关对账，不恢复旧码。
+      parameters:
+      - name: x-device-id
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: x-device-token
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - code
+              properties:
+                code:
+                  type: string
+                  description: 二维码令牌明文，服务端只按摘要匹配
+                result:
+                  type: string
+                  enum:
+                  - SUCCEEDED
+                  - FAILED
+                  - UNKNOWN
+                  default: SUCCEEDED
+                reconcile_result:
+                  type: string
+                  enum:
+                  - SUCCEEDED
+                  - FAILED
+                  default: SUCCEEDED
+      responses:
+        '200':
+          description: 放行或重复扫码
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanAttempt'
+        '401':
+          description: DEVICE_UNKNOWN / DEVICE_UNAUTHORIZED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: GATE_MISMATCH / NIGHT_ACCESS_ENDED，门禁或时段不符
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: PASS_REVOKED / PASS_CONSUMED / RETURN_EXISTS，改期作废或当夜名额已被占用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: PASS_EXPIRED，超过有效期且库内已标记为 EXPIRED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: PASS_NOT_FOUND，码不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications:
+    get:
+      summary: 我的模拟收件箱
+      description: 只返回当前会话本人作为收件人的条目（notification:read）。邮件类条目是已渲染正文的预览， Demo 不真实发信；站内待办条目对应宿管工号账号。渠道由账号来源决定，客户端无法指定。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: unread_only
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: 收件箱列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationList'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/{notification_id}:
+    get:
+      summary: 读取一条通知的正文
+      description: 非本人收件条目按不存在处理（404），不泄露存在性。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: 通知
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          description: 不存在或不属于当前收件人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/{notification_id}/read:
+    post:
+      summary: 标记已读
+      description: 幂等（notification:mark_read）；重复标记返回同一条目，read_at 取首次时间。
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/NotificationId'
+      responses:
+        '200':
+          description: 更新后的通知
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          description: 不存在或不属于当前收件人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notification-dispatch:
+    post:
+      summary: 演示投递：按模板渲染并入队通知任务
+      description: 仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与 值班关系派生（23:30 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警
+        → 辅导员 + 当班宿管）， 在 B 的目录与 duty 落地前不开放自选收件人。 服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、 同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationDispatchRequest'
+      responses:
+        '202':
           description: 已入队的任务（去重时返回既有任务）
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NotificationDispatchResult"
-        "403":
+                $ref: '#/components/schemas/NotificationDispatchResult'
+        '403':
           description: 非园区角色，或收件人含园区的风险预警
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "404":
+                $ref: '#/components/schemas/Error'
+        '404':
           description: 收件人不存在
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "422":
+                $ref: '#/components/schemas/Error'
+        '422':
           description: 收件人为空或模板与收件人角色不匹配
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /notification-jobs:
     get:
       summary: 列出通知后台任务
-      description: >-
-        仅园区角色（notification_job:read）。用于演示时确认 worker 已消费 `background_jobs`；
-        只覆盖通知类任务，不暴露其他模块的任务负载。
-      security: [{ bearerAuth: [] }]
+      description: 仅园区角色（notification_job:read）。用于演示时确认 worker 已消费 `background_jobs`； 只覆盖通知类任务，不暴露其他模块的任务负载。
+      security:
+      - bearerAuth: []
       responses:
-        "200":
+        '200':
           description: 任务列表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NotificationJobList"
-        "403":
+                $ref: '#/components/schemas/NotificationJobList'
+        '403':
           description: 非园区角色
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-
+                $ref: '#/components/schemas/Error'
   /demo/clock:
     get:
       summary: 读取演示时钟
       responses:
-        "200":
+        '200':
           description: 当前业务时间、服务端判定的业务夜与偏移分钟数
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ClockState"
+                $ref: '#/components/schemas/ClockState'
     post:
       summary: 推进演示时钟
       requestBody:
@@ -827,240 +1329,882 @@ paths:
           application/json:
             schema:
               type: object
-              required: [offset_minutes]
+              required:
+              - offset_minutes
               properties:
-                offset_minutes: { type: integer }
+                offset_minutes:
+                  type: integer
       responses:
-        "200":
+        '200':
           description: 新的业务时间
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ClockState"
-
+                $ref: '#/components/schemas/ClockState'
+  /me/profile:
+    get:
+      summary: 当前学校基础身份与获授职责
+      operationId: get_me_profile
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+  /me/residence:
+    get:
+      summary: 本人住宿信息（不可自行修改）
+      operationId: get_me_residence
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+  /management/users:
+    get:
+      summary: 授权范围内的教师与管理人员
+      operationId: get_management_users
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedUserList'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: college_org_id
+        in: query
+        schema:
+          type: string
+  /management/grants:
+    get:
+      summary: 职责与范围授予记录
+      operationId: get_management_grants
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleGrantList'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+    post:
+      summary: 上级授予职责；学院负责人仅可分配本学院学生
+      operationId: post_management_grants
+      responses:
+        '201':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleGrant'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleGrantRequest'
+  /management/grants/{grant_id}:
+    delete:
+      summary: 撤回职责，旧会话即时失效
+      operationId: delete_management_grants_grant_id
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: grant_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /management/audit:
+    get:
+      summary: 授权范围内只追加的管理审计
+      operationId: get_management_audit
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObjectList'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+  /directory/students:
+    get:
+      summary: 按学院专业年级班级筛选范围内学生
+      operationId: get_directory_students
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDirectoryList'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: college_org_id
+        in: query
+        schema:
+          type: string
+      - name: major
+        in: query
+        schema:
+          type: string
+      - name: grade
+        in: query
+        schema:
+          type: string
+      - name: class_name
+        in: query
+        schema:
+          type: string
+      - name: q
+        in: query
+        schema:
+          type: string
+  /directory/options:
+    get:
+      summary: 学生筛选器的范围内候选值
+      operationId: get_directory_options
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+  /verification-sessions:
+    post:
+      summary: 模拟人脸与现场核验；凭证消费与签码同事务
+      operationId: post_verification-sessions
+      responses:
+        '201':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResult'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationRequest'
+  /verification-sessions/{verification_id}:
+    get:
+      summary: 本人核验审计结果，不重复返回码明文
+      operationId: get_verification-sessions_verification_id
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: verification_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /return-records/self:
+    get:
+      summary: 学生本人正式记录，绝不读取他人
+      operationId: get_return-records_self
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReturnRecords'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: service_date
+        in: query
+        schema:
+          type: string
+  /return-records/{return_id}/corrections:
+    get:
+      summary: 范围内正式记录的只追加纠错历史
+      operationId: get_return-records_return_id_corrections
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObjectList'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: return_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: 宿管追加更正证据，不覆盖原始记录
+      operationId: post_return-records_return_id_corrections
+      responses:
+        '201':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnCorrectionRequest'
+      parameters:
+      - name: return_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /risk-events/{event_id}/resolve:
+    post:
+      summary: 负责教师或当班宿管解决事件
+      operationId: post_risk-events_event_id_resolve
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskEvent'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskActionRequest'
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /risk-policy:
+    get:
+      summary: 当前版本化 Demo 风险规则
+      operationId: get_risk-policy
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskPolicy'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+    put:
+      summary: 园区更新规则版本，不能基于超时创建风险
+      operationId: put_risk-policy
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskPolicy'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskPolicy'
+  /duty-assignments/{duty_id}:
+    delete:
+      summary: 园区撤销未来或当前指派并保留审计
+      operationId: delete_duty-assignments_duty_id
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: duty_id
+        in: path
+        required: true
+        schema:
+          type: string
+  /integrations/access/events:
+    post:
+      summary: 设备身份认证的异步通行回执
+      operationId: post_integrations_access_events
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObject'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessReceiptRequest'
+      parameters:
+      - name: x-device-id
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: x-device-token
+        in: header
+        required: true
+        schema:
+          type: string
+      security: []
+  /return-records/{return_id}/evidence:
+    get:
+      summary: 本人或负责范围内正式记录的只追加证据
+      operationId: get_return_evidence
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: return_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 独立证据，不覆盖原始记录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoObjectList'
+  /risk-events/{event_id}/ack:
+    post:
+      summary: 负责教师或当班宿管确认风险跟进
+      operationId: ack_risk_event
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskActionRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskEvent'
+        '403':
+          description: 动作、范围或输入被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-
   parameters:
     ReservationId:
       name: reservation_id
       in: path
       required: true
-      schema: { type: string }
-
+      schema:
+        type: string
     StaffAccountId:
       name: staff_account_id
       in: path
       required: true
-      schema: { type: string }
-
+      schema:
+        type: string
     NotificationId:
       name: notification_id
       in: path
       required: true
-      schema: { type: string }
-
+      schema:
+        type: string
     ServiceDate:
       name: service_date
       in: query
       required: false
-      description: >-
-        业务日 YYYY-MM-DD（D 日 06:00 到 D+1 日 06:00 算同一夜）。缺省为服务端当前时刻的前一晚；
-        晚于服务端判定的当前业务日返回 422，客户端不得自行推算业务日归属。
-      schema: { type: string, format: date }
-
+      description: 业务日 YYYY-MM-DD（D 日 06:00 到 D+1 日 06:00 算同一夜）。缺省为服务端当前时刻的前一晚； 晚于服务端判定的当前业务日返回 422，客户端不得自行推算业务日归属。
+      schema:
+        type: string
+        format: date
   schemas:
     Role:
       type: string
-      enum: [STUDENT, DORM_MANAGER, COUNSELOR, CAMPUS]
-
+      enum:
+      - STUDENT
+      - DORM_MANAGER
+      - COUNSELOR
+      - IDEOLOGY
+      - TEACHER
+      - COLLEGE_ADMIN
+      - AUTH_ADMIN
+      - CAMPUS
+      description: 基础学生/教师身份由学校确认；COUNSELOR、IDEOLOGY、COLLEGE_ADMIN、CAMPUS 由上级部门授予；AUTH_ADMIN 仅由合成启动配置提供。
     AccountSource:
       type: string
-      description: >-
-        账号来源。UNIFIED_SCHOOL 走学校统一身份并带校内邮箱；
-        STAFF_LOCAL 是园区为本系统注册的雇佣人员工号账号，无邮箱，通知只走站内待办。
-      enum: [UNIFIED_SCHOOL, STAFF_LOCAL]
-
+      description: 账号来源。UNIFIED_SCHOOL 走学校统一身份并带校内邮箱； STAFF_LOCAL 是园区为本系统注册的雇佣人员工号账号，无邮箱，通知只走站内待办。
+      enum:
+      - UNIFIED_SCHOOL
+      - STAFF_LOCAL
     StaffAccountStatus:
       type: string
-      enum: [ACTIVE, DISABLED]
-
+      enum:
+      - ACTIVE
+      - DISABLED
     DemoAccount:
       type: object
-      required: [user_id, login_name, display_name, roles, password, account_source]
+      required:
+      - user_id
+      - login_name
+      - display_name
+      - roles
+      - password
+      - account_source
       properties:
         user_id:
           type: string
           description: 合成账号的稳定 ID；园区端用它指定演示投递的收件人。
-        login_name: { type: string }
-        display_name: { type: string }
+        login_name:
+          type: string
+        display_name:
+          type: string
         roles:
           type: array
-          items: { $ref: "#/components/schemas/Role" }
-        password: { type: string, description: 仅 Demo 合成口令 }
-        account_source: { $ref: "#/components/schemas/AccountSource" }
+          items:
+            $ref: '#/components/schemas/Role'
+        password:
+          type: string
+          description: 仅 Demo 合成口令
+        account_source:
+          $ref: '#/components/schemas/AccountSource'
         email:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           description: 合成校内邮箱；工号账号为 null。
-
     Scope:
       type: object
-      description: >-
-        数据范围，按角色出现不同字段；resolved_by 标明由哪个适配器解析，
-        pending: 前缀表示等待 B 目录模块覆盖。
-      required: [resolved_by]
+      description: '数据范围，按角色出现不同字段；resolved_by 标明由哪个适配器解析， pending: 前缀表示等待 B 目录模块覆盖。'
+      required:
+      - resolved_by
       additionalProperties: true
       properties:
-        student_id: { type: ["string", "null"] }
-        counselor_user_id: { type: string }
+        student_id:
+          type:
+          - string
+          - 'null'
+        counselor_user_id:
+          type: string
         student_ids:
           type: array
-          items: { type: string }
+          items:
+            type: string
         building_ids:
           type: array
-          items: { type: string }
-        scope: { type: string, description: 园区授权标记，如 ALL_AUTHORIZED }
-        resolved_by: { type: string }
-
+          items:
+            type: string
+        scope:
+          type: string
+          description: 园区授权标记，如 ALL_AUTHORIZED
+        resolved_by:
+          type: string
+        college_org_ids:
+          type: array
+          items:
+            type: string
     SessionContext:
       type: object
       required:
-        [
-          session_id,
-          user_id,
-          school_id,
-          display_name,
-          roles,
-          active_role,
-          scope,
-          expires_at,
-          account_source,
-        ]
+      - session_id
+      - user_id
+      - school_id
+      - display_name
+      - roles
+      - active_role
+      - scope
+      - expires_at
+      - account_source
       properties:
-        session_id: { type: string }
-        user_id: { type: string }
+        session_id:
+          type: string
+        user_id:
+          type: string
         school_id:
           type: string
           description: 校内统一账户为学号或工号；工号账号为本地工号，与校内编号无关。
-        display_name: { type: string }
+        display_name:
+          type: string
         roles:
           type: array
-          items: { $ref: "#/components/schemas/Role" }
-        active_role: { $ref: "#/components/schemas/Role" }
-        scope: { $ref: "#/components/schemas/Scope" }
-        expires_at: { type: string, format: date-time }
-        account_source: { $ref: "#/components/schemas/AccountSource" }
+          items:
+            $ref: '#/components/schemas/Role'
+        active_role:
+          $ref: '#/components/schemas/Role'
+        scope:
+          $ref: '#/components/schemas/Scope'
+        expires_at:
+          type: string
+          format: date-time
+        account_source:
+          $ref: '#/components/schemas/AccountSource'
         email:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           description: 报告与预警邮件的投递地址；STAFF_LOCAL 为 null，只落站内待办。
-
+        identity_types:
+          type: array
+          items:
+            type: string
+            enum:
+            - STUDENT
+            - TEACHER
+            - EMPLOYEE
+        college_org_id:
+          type:
+          - string
+          - 'null'
+        position_title:
+          type: string
     StaffAccount:
       type: object
-      required: [id, login_name, display_name, building_ids, status, created_at]
+      required:
+      - id
+      - login_name
+      - display_name
+      - building_ids
+      - status
+      - created_at
       properties:
-        id: { type: string }
-        login_name: { type: string }
-        display_name: { type: string }
+        id:
+          type: string
+        login_name:
+          type: string
+        display_name:
+          type: string
         building_ids:
           type: array
           description: 园区绑定的固定管理楼栋；代班（B 的 duty）在此之上叠加。
-          items: { type: string }
-        status: { $ref: "#/components/schemas/StaffAccountStatus" }
-        created_at: { type: string, format: date-time }
-        disabled_at: { type: ["string", "null"], format: date-time }
-
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/StaffAccountStatus'
+        created_at:
+          type: string
+          format: date-time
+        disabled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     StaffAccountCreateRequest:
       type: object
-      required: [login_name, display_name, building_ids]
+      required:
+      - login_name
+      - display_name
+      - building_ids
       properties:
         login_name:
           type: string
           minLength: 3
           description: 不得与统一账户或已有工号账号重复。
-        display_name: { type: string, minLength: 1 }
+        display_name:
+          type: string
+          minLength: 1
         building_ids:
           type: array
           minItems: 1
-          items: { type: string, minLength: 1 }
-
+          items:
+            type: string
+            minLength: 1
     StaffAccountUpdateRequest:
       type: object
       properties:
-        display_name: { type: string, minLength: 1 }
+        display_name:
+          type: string
+          minLength: 1
         building_ids:
           type: array
           minItems: 1
-          items: { type: string, minLength: 1 }
-
+          items:
+            type: string
+            minLength: 1
     StaffAccountSecret:
       type: object
       description: 只在创建与重置响应中出现一次，不写日志、不进列表接口。
-      required: [account, initial_password]
+      required:
+      - account
+      - initial_password
       properties:
-        account: { $ref: "#/components/schemas/StaffAccount" }
-        initial_password: { type: string }
-
+        account:
+          $ref: '#/components/schemas/StaffAccount'
+        initial_password:
+          type: string
     StaffAccountList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/StaffAccount" }
-        next_cursor: { type: ["string", "null"] }
-
+          items:
+            $ref: '#/components/schemas/StaffAccount'
+        next_cursor:
+          type:
+          - string
+          - 'null'
     AuthSession:
       type: object
-      required: [token, session]
+      required:
+      - token
+      - session
       properties:
-        token: { type: string }
-        session: { $ref: "#/components/schemas/SessionContext" }
-
+        token:
+          type: string
+        session:
+          $ref: '#/components/schemas/SessionContext'
     LogoutResult:
       type: object
-      required: [status]
+      required:
+      - status
       properties:
-        status: { type: string, enum: [logged_out] }
-
+        status:
+          type: string
+          enum:
+          - logged_out
     AllowedActions:
       type: object
-      required: [role, allowed_actions]
+      required:
+      - role
+      - allowed_actions
       properties:
-        role: { $ref: "#/components/schemas/Role" }
+        role:
+          $ref: '#/components/schemas/Role'
         allowed_actions:
           type: array
-          items: { type: string }
-
+          items:
+            type: string
     ScopeCheck:
       type: object
-      required: [role, action, decision, scope]
+      required:
+      - role
+      - action
+      - decision
+      - scope
       properties:
-        role: { $ref: "#/components/schemas/Role" }
-        action: { type: string }
-        decision: { type: string, enum: [ALLOWED] }
-        scope: { $ref: "#/components/schemas/Scope" }
-
+        role:
+          $ref: '#/components/schemas/Role'
+        action:
+          type: string
+        decision:
+          type: string
+          enum:
+          - ALLOWED
+        scope:
+          $ref: '#/components/schemas/Scope'
     RoleList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
           items:
             type: object
-            required: [value]
+            required:
+            - value
             properties:
-              value: { $ref: "#/components/schemas/Role" }
-        next_cursor: { type: ["string", "null"] }
-
+              value:
+                $ref: '#/components/schemas/Role'
+        next_cursor:
+          type:
+          - string
+          - 'null'
     ClockState:
       type: object
-      required: [now, service_date, night_window, offset_minutes]
+      required:
+      - now
+      - service_date
+      - night_window
+      - latest_return_at
+      - offset_minutes
       properties:
-        now: { type: string, format: date-time }
+        now:
+          type: string
+          format: date-time
         service_date:
           type: string
           format: date
@@ -1068,32 +2212,51 @@ components:
         night_window:
           type: array
           description: 当夜门禁时段 [start, end)，端点带时区；客户端只用它列举可选时刻，不自行判定。
-          items: { type: string, format: date-time }
+          items:
+            type: string
+            format: date-time
           minItems: 2
           maxItems: 2
-        offset_minutes: { type: integer }
-
+        latest_return_at:
+          type: string
+          format: date-time
+          description: 最晚可选返宿时刻（门禁结束前一个核验窗口，默认 05:30），端点带时区；客户端列举返宿档位以此为含上界，保证核验窗口不越过 06:00。
+        offset_minutes:
+          type: integer
     ReservationStatus:
       type: string
-      enum: [ACTIVE, CANCELLED, FULFILLED, CLOSED]
-
+      enum:
+      - ACTIVE
+      - CANCELLED
+      - FULFILLED
+      - CLOSED
     VerificationState:
       type: string
-      enum: [NOT_OPEN, OPEN, ENDED]
+      enum:
+      - NOT_OPEN
+      - OPEN
+      - ENDED
       description: 相对服务端读取时刻的核验窗口位置（R08，端点包含）。
-
     ReservationVerification:
       type: object
-      description: >-
-        预约派生出的核验时段视图（R08、R09）。窗口＝预约时刻前后 margin_minutes，端点包含；
-        核验可以发生在零点前，但夜间通行只在 [00:00,06:00) 内有效，
-        所以 state 与能否通行是两件事。客户端只显示，不自行判断（基线「统一日期与边界」）。
+      description: 预约派生出的核验时段视图（R08、R09）。窗口＝预约时刻前后 margin_minutes，端点包含； 核验可以发生在零点前，但夜间通行只在 [00:00,06:00) 内有效， 所以
+        state 与能否通行是两件事。客户端只显示，不自行判断（基线「统一日期与边界」）。
       required:
-        [opens_at, closes_at, state, margin_minutes, code_seconds, night_access_ends_at]
+      - opens_at
+      - closes_at
+      - state
+      - margin_minutes
+      - code_seconds
+      - night_access_ends_at
       properties:
-        opens_at: { type: string, format: date-time }
-        closes_at: { type: string, format: date-time }
-        state: { $ref: "#/components/schemas/VerificationState" }
+        opens_at:
+          type: string
+          format: date-time
+        closes_at:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/VerificationState'
         margin_minutes:
           type: integer
           description: 前后裕量，配置 verification_margin_minutes（基线 R08 已确认 30）。
@@ -1104,20 +2267,31 @@ components:
           type: string
           format: date-time
           description: 该业务夜夜间授权结束时刻（06:00）；窗口上界可以越过它，码到点即 NIGHT_ACCESS_ENDED。
-
     Reservation:
       type: object
-      description: >-
-        一晚一条；(student_id, service_date) 唯一。version 从 1 起，每次学生动作 +1；
-        系统关闭（CLOSED）不加 version。修改/取消/恢复必须携带 expected_version。
+      description: 一晚一条；(student_id, service_date) 唯一。version 从 1 起，每次学生动作 +1； 系统关闭（CLOSED）不加 version。修改/取消/恢复必须携带
+        expected_version。
       required:
-        [id, student_id, service_date, status, planned_return_at, reason,
-         version, created_at, updated_at, verification]
+      - id
+      - student_id
+      - service_date
+      - status
+      - planned_return_at
+      - reason
+      - version
+      - created_at
+      - updated_at
+      - verification
       properties:
-        id: { type: string }
-        student_id: { type: string }
-        service_date: { type: string, format: date }
-        status: { $ref: "#/components/schemas/ReservationStatus" }
+        id:
+          type: string
+        student_id:
+          type: string
+        service_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
         planned_return_at:
           type: string
           format: date-time
@@ -1125,201 +2299,311 @@ components:
         reason:
           type: string
           description: 自由文本，上限 500 字符（Demo 默认）；不作为拒绝依据（R06、R17）。
-        version: { type: integer }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-        verification: { $ref: "#/components/schemas/ReservationVerification" }
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        verification:
+          $ref: '#/components/schemas/ReservationVerification'
         risk_notice:
           allOf:
-            - $ref: "#/components/schemas/RiskNotice"
-          description: >-
-            仅 POST 响应在「本次预约首次跨过演示阈值」时返回；其余入口与未触发时缺省。
-            判定与文案全部在服务端，客户端只显示（基线「统一日期与边界」）。
-
+          - $ref: '#/components/schemas/RiskNotice'
+          description: 仅 POST 响应在「本次预约首次跨过演示阈值」时返回；其余入口与未触发时缺省。 判定与文案全部在服务端，客户端只显示（基线「统一日期与边界」）。
     ReservationRevisionSource:
       type: string
-      enum: [CREATE, RESCHEDULE, CANCEL, RESTORE, CLOSE]
-
+      enum:
+      - CREATE
+      - RESCHEDULE
+      - CANCEL
+      - RESTORE
+      - CLOSE
     ReservationRevision:
       type: object
       description: 只追加的修订历史；CREATE 记录 version=1 的初始内容。
       required:
-        [id, reservation_id, version, source, status, planned_return_at, reason, changed_at]
+      - id
+      - reservation_id
+      - version
+      - source
+      - status
+      - planned_return_at
+      - reason
+      - changed_at
       properties:
-        id: { type: string }
-        reservation_id: { type: string }
-        version: { type: integer }
-        source: { $ref: "#/components/schemas/ReservationRevisionSource" }
-        status: { $ref: "#/components/schemas/ReservationStatus" }
-        planned_return_at: { type: string, format: date-time }
-        reason: { type: string }
-        changed_by: { type: ["string", "null"], description: 学生 user_id；CLOSE 等系统事件为 null }
-        changed_at: { type: string, format: date-time }
-
+        id:
+          type: string
+        reservation_id:
+          type: string
+        version:
+          type: integer
+        source:
+          $ref: '#/components/schemas/ReservationRevisionSource'
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+        planned_return_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        changed_by:
+          type:
+          - string
+          - 'null'
+          description: 学生 user_id；CLOSE 等系统事件为 null
+        changed_at:
+          type: string
+          format: date-time
     ReservationList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/Reservation" }
-        next_cursor: { type: ["string", "null"] }
-
+          items:
+            $ref: '#/components/schemas/Reservation'
+        next_cursor:
+          type:
+          - string
+          - 'null'
     RevisionList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/ReservationRevision" }
-        next_cursor: { type: ["string", "null"] }
-
+          items:
+            $ref: '#/components/schemas/ReservationRevision'
+        next_cursor:
+          type:
+          - string
+          - 'null'
     RiskNotice:
       type: object
-      description: >-
-        申请时弹窗的规则事实（R16）。口径是「预约晚归的业务夜数与连续性」，
-        不是实际晚归——实际返宿以门禁通行记录为准，B 的记录模块落地前不改口径。
-        阈值全部来自演示配置，正式值待学校确认，正文不得写成处分或催办（R15、R17）。
+      description: 申请时弹窗的规则事实（R16）。口径是「预约晚归的业务夜数与连续性」， 不是实际晚归——实际返宿以门禁通行记录为准，B 的记录模块落地前不改口径。 阈值全部来自演示配置，正式值待学校确认，正文不得写成处分或催办（R15、R17）。
       required:
-        [rule_version, window_nights, nights, times, consecutive_nights, title, message]
+      - rule_version
+      - window_nights
+      - nights
+      - times
+      - consecutive_nights
+      - title
+      - message
       properties:
         rule_version:
           type: string
           description: 触发所用的规则集版本，配置 risk_rule_version；同一夜重复弹窗判定必须比对它。
-        window_nights: { type: integer, description: 统计窗口（业务夜数），配置 risk_window_nights }
+        window_nights:
+          type: integer
+          description: 统计窗口（业务夜数），配置 risk_window_nights
         nights:
           type: array
-          items: { type: string, format: date }
+          items:
+            type: string
+            format: date
           description: 窗口内出现非取消预约的业务夜，升序，含当夜。
-        times: { type: integer, description: 窗口内的晚归夜数 }
-        consecutive_nights: { type: integer, description: 窗口内最长的连续晚归夜数 }
+        times:
+          type: integer
+          description: 窗口内的晚归夜数
+        consecutive_nights:
+          type: integer
+          description: 窗口内最长的连续晚归夜数
         triggered_by:
           type: string
-          enum: [TIMES, CONSECUTIVE]
+          enum:
+          - TIMES
+          - CONSECUTIVE
           description: 首先越过的阈值；两者同时越界时取 TIMES。
-        title: { type: string }
+        title:
+          type: string
         message:
           type: string
           description: 服务端渲染好的提示正文，客户端原样显示，不参与判定与拼接。
-
     NotificationTemplate:
       type: string
-      description: >-
-        NIGHT_ROSTER 每晚 23:30 宿管名单快照（R12）；DAILY_REPORT 次日辅导员日报、
-        WEEKLY_REPORT 周一辅导员周报（R13）；RISK_ALERT 多次或连续触发的跟进提示（R16），
-        收件人只能是负责辅导员与当班宿管。
-      enum: [NIGHT_ROSTER, DAILY_REPORT, WEEKLY_REPORT, RISK_ALERT]
-
+      description: NIGHT_ROSTER 每晚 24:00 宿管名单快照（R12）；DAILY_REPORT 次日辅导员日报、 WEEKLY_REPORT 周一辅导员周报（R13）；RISK_ALERT
+        多次或连续触发的跟进提示（R16）， 收件人只能是负责辅导员与当班宿管。
+      enum:
+      - NIGHT_ROSTER
+      - DAILY_REPORT
+      - WEEKLY_REPORT
+      - RISK_ALERT
+      - DORM_APPROVED
+      - DORM_RESCHEDULED
+      - DORM_CANCELLED
     NotificationChannel:
       type: string
-      description: >-
-        投递渠道，服务端按收件人账号来源单选（R18、R19）：统一身份账户走 EMAIL，
-        宿管工号账号走 INBOX；同一事件对同一收件人不同时出现在两个渠道。
-      enum: [EMAIL, INBOX]
-
+      description: 投递渠道，服务端按收件人账号来源单选（R18、R19）：统一身份账户走 EMAIL， 宿管工号账号走 INBOX；同一事件对同一收件人不同时出现在两个渠道。
+      enum:
+      - EMAIL
+      - INBOX
     NotificationStatus:
       type: string
-      enum: [SENT, READ]
-
+      enum:
+      - SENT
+      - READ
     BackgroundJobStatus:
       type: string
       description: PENDING 待领取；RUNNING 已被 worker 租约占用；DONE 已完成；FAILED 保留最后一次失败原因。
-      enum: [PENDING, RUNNING, DONE, FAILED]
-
+      enum:
+      - PENDING
+      - RUNNING
+      - DONE
+      - FAILED
     Notification:
       type: object
       description: 模拟收件箱条目。Demo 的邮件不真实投递，正文在本对象里直接可见。
       required:
-        - id
-        - template
-        - channel
-        - subject
-        - body
-        - status
-        - service_date
-        - recipient_email
-        - job_id
-        - created_at
-        - read_at
+      - id
+      - template
+      - channel
+      - subject
+      - body
+      - status
+      - service_date
+      - recipient_email
+      - job_id
+      - created_at
+      - read_at
       properties:
-        id: { type: string }
-        template: { $ref: "#/components/schemas/NotificationTemplate" }
-        channel: { $ref: "#/components/schemas/NotificationChannel" }
-        subject: { type: string }
+        id:
+          type: string
+        template:
+          $ref: '#/components/schemas/NotificationTemplate'
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        subject:
+          type: string
         body:
           type: string
-          description: >-
-            纯文本正文。一律带「未确认返宿只代表查询派生状态」的口径说明，
-            不含任何超时催办或升级处置措辞（R15）。
-        status: { $ref: "#/components/schemas/NotificationStatus" }
+          description: 纯文本正文。一律带「未确认返宿只代表查询派生状态」的口径说明， 不含任何超时催办或升级处置措辞（R15）。
+        status:
+          $ref: '#/components/schemas/NotificationStatus'
         service_date:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           format: date
           description: 本条通知覆盖的最后一个业务夜；周报取区间末日。
         recipient_email:
-          type: ["string", "null"]
+          type:
+          - string
+          - 'null'
           description: 邮件预览的合成收件地址；站内待办为 null。
-        job_id: { type: ["string", "null"] }
-        created_at: { type: string, format: date-time }
-        read_at: { type: ["string", "null"], format: date-time }
-
+        job_id:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        read_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
     NotificationList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/Notification" }
-        next_cursor: { type: ["string", "null"] }
-
+          items:
+            $ref: '#/components/schemas/Notification'
+        next_cursor:
+          type:
+          - string
+          - 'null'
     NotificationJob:
       type: object
-      description: "background_jobs 里的一条通知任务；worker 消费后生成收件箱条目。"
+      description: background_jobs 里的一条通知任务；worker 消费后生成收件箱条目。
       required:
-        - id
-        - job_type
-        - business_key
-        - status
-        - planned_at
-        - attempts
-        - template
-        - service_date
-        - recipient_user_ids
+      - id
+      - job_type
+      - business_key
+      - status
+      - planned_at
+      - attempts
+      - template
+      - service_date
+      - recipient_user_ids
       properties:
-        id: { type: string }
+        id:
+          type: string
         job_type:
           type: string
           description: 通知类任务固定为 NOTIFICATION_SEND；重试沿用同一行，attempts 递增。
-          enum: [NOTIFICATION_SEND]
+          enum:
+          - NOTIFICATION_SEND
         business_key:
           type: string
           description: 幂等键 = 模板:业务夜:收件人集合；唯一约束保证重复提交只有一条任务。
-        status: { $ref: "#/components/schemas/BackgroundJobStatus" }
-        planned_at: { type: string, format: date-time }
-        attempts: { type: integer }
-        last_error: { type: ["string", "null"] }
-        done_at: { type: ["string", "null"], format: date-time }
-        template: { $ref: "#/components/schemas/NotificationTemplate" }
-        service_date: { type: string, format: date }
+        status:
+          $ref: '#/components/schemas/BackgroundJobStatus'
+        planned_at:
+          type: string
+          format: date-time
+        attempts:
+          type: integer
+        last_error:
+          type:
+          - string
+          - 'null'
+        done_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        template:
+          $ref: '#/components/schemas/NotificationTemplate'
+        service_date:
+          type: string
+          format: date
         recipient_user_ids:
           type: array
-          items: { type: string }
-        created_at: { type: string, format: date-time }
-
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
     NotificationJobList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/NotificationJob" }
-        next_cursor: { type: ["string", "null"] }
-
+          items:
+            $ref: '#/components/schemas/NotificationJob'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    ManualNotificationTemplate:
+      type: string
+      enum:
+      - NIGHT_ROSTER
+      - DAILY_REPORT
+      - WEEKLY_REPORT
+      - RISK_ALERT
     NotificationDispatchRequest:
       type: object
-      required: [template, recipient_user_ids]
+      required:
+      - template
+      - recipient_user_ids
       properties:
-        template: { $ref: "#/components/schemas/NotificationTemplate" }
+        template:
+          $ref: '#/components/schemas/ManualNotificationTemplate'
         service_date:
           type: string
           format: date
@@ -1327,128 +2611,1418 @@ components:
         recipient_user_ids:
           type: array
           minItems: 1
-          items: { type: string }
+          items:
+            type: string
         student_ids:
           type: array
-          description: >-
-            仅用于收窄正文取数范围；省略即当前授权范围内的全部预约。
-            正式版的范围来自目录关系，不由调用方指定。
-          items: { type: string }
+          description: 仅用于收窄正文取数范围；省略即当前授权范围内的全部预约。 正式版的范围来自目录关系，不由调用方指定。
+          items:
+            type: string
         deliver_now:
           type: boolean
           default: false
-          description: >-
-            演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费；
-            false 时按配置的计划时刻排队（23:30 名单、次日 08:30 日报、周一 09:00 周报）。
+          description: 演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费； false 时按配置的计划时刻排队（23:30 名单、次日 08:30 日报、周一 09:00 周报）。
             worker 与 API 的演示时钟偏移不互通，跨进程共享偏移见 docs/13。
-
     NotificationDispatchResult:
       type: object
-      required: [jobs, deduped]
+      required:
+      - jobs
+      - deduped
       properties:
         jobs:
           type: array
-          items: { $ref: "#/components/schemas/NotificationJob" }
+          items:
+            $ref: '#/components/schemas/NotificationJob'
         deduped:
           type: boolean
           description: true 表示幂等键已存在，本次没有重复入队。
-
     ReportTotals:
       type: object
-      description: >-
-        计数口径的唯一来源是 `app/modules/reports/summary.py`：一晚一条、取消不计、
-        人数按学生去重、夜数按业务夜去重。「未确认」只表示当晚没有匹配到通行记录（R15）。
-      required: [students, nights, unconfirmed]
+      description: 计数口径的唯一来源是 `app/modules/reports/summary.py`：一晚一条、取消不计、 人数按学生去重、夜数按业务夜去重。「未确认」只表示当晚没有匹配到通行记录（R15）。
+      required:
+      - students
+      - nights
+      - unconfirmed
       properties:
-        students: { type: integer, description: 去重后的学生数 }
-        nights: { type: integer, description: 去重后的业务夜数 }
-        unconfirmed: { type: integer, description: 未确认返宿的学生夜数 }
-
+        students:
+          type: integer
+          description: 去重后的学生数
+        nights:
+          type: integer
+          description: 去重后的业务夜数
+        unconfirmed:
+          type: integer
+          description: 未确认返宿的学生夜数
     ReportItem:
       type: object
-      required: [student_id, school_id, display_name, planned_return_at, status]
+      required:
+      - student_id
+      - school_id
+      - display_name
+      - planned_return_at
+      - status
       properties:
-        student_id: { type: string }
-        school_id: { type: string, description: 合成学号；目录未同步时为「目录未同步」 }
-        display_name: { type: string, description: 合成姓名，绝不返回真实姓名 }
-        planned_return_at: { type: string, format: date-time }
-        status: { $ref: "#/components/schemas/ReservationStatus" }
-
+        student_id:
+          type: string
+        school_id:
+          type: string
+          description: 合成学号；目录未同步时为「目录未同步」
+        display_name:
+          type: string
+          description: 合成姓名，绝不返回真实姓名
+        planned_return_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
     ReportNight:
       type: object
-      required: [service_date, total, unconfirmed]
+      required:
+      - service_date
+      - total
+      - unconfirmed
       properties:
-        service_date: { type: string, format: date }
-        total: { type: integer }
-        unconfirmed: { type: integer }
-
+        service_date:
+          type: string
+          format: date
+        total:
+          type: integer
+        unconfirmed:
+          type: integer
     DailyReport:
       type: object
-      required: [template, service_date, night_window, generated_at, scope_note, totals, items, caliber_notes]
+      required:
+      - template
+      - service_date
+      - night_window
+      - generated_at
+      - scope_note
+      - totals
+      - items
+      - caliber_notes
       properties:
-        template: { type: string, const: DAILY_REPORT }
-        service_date: { type: string, format: date }
+        template:
+          type: string
+          const: DAILY_REPORT
+        service_date:
+          type: string
+          format: date
         night_window:
           type: array
           minItems: 2
           maxItems: 2
           description: 当夜门禁时段 [start, end)，由服务端判定，客户端只显示。
-          items: { type: string, format: date-time }
-        generated_at: { type: string, format: date-time }
-        scope_note: { type: string, description: 本次读取的数据范围说明 }
-        totals: { $ref: "#/components/schemas/ReportTotals" }
+          items:
+            type: string
+            format: date-time
+        generated_at:
+          type: string
+          format: date-time
+        scope_note:
+          type: string
+          description: 本次读取的数据范围说明
+        totals:
+          $ref: '#/components/schemas/ReportTotals'
         items:
           type: array
           description: 按计划返宿时刻、再按学生主键排序。
-          items: { $ref: "#/components/schemas/ReportItem" }
+          items:
+            $ref: '#/components/schemas/ReportItem'
         caliber_notes:
           type: array
           description: 口径原文，必带「未确认返宿不代表已证明未归」；正文与报告同一句。
-          items: { type: string }
-
+          items:
+            type: string
     WeeklyReport:
       type: object
-      required: [template, week_start, service_date, nights_covered, generated_at, scope_note, totals, nights, caliber_notes]
+      required:
+      - template
+      - week_start
+      - service_date
+      - nights_covered
+      - generated_at
+      - scope_note
+      - totals
+      - nights
+      - caliber_notes
       properties:
-        template: { type: string, const: WEEKLY_REPORT }
-        week_start: { type: string, format: date }
-        service_date: { type: string, format: date, description: 区间末夜 }
-        nights_covered: { type: integer, description: 覆盖的业务夜数，等于配置的周报夜数 }
-        generated_at: { type: string, format: date-time }
-        scope_note: { type: string }
-        totals: { $ref: "#/components/schemas/ReportTotals" }
+        template:
+          type: string
+          const: WEEKLY_REPORT
+        week_start:
+          type: string
+          format: date
+        service_date:
+          type: string
+          format: date
+          description: 区间末夜
+        nights_covered:
+          type: integer
+          description: 覆盖的业务夜数，等于配置的周报夜数
+        generated_at:
+          type: string
+          format: date-time
+        scope_note:
+          type: string
+        totals:
+          $ref: '#/components/schemas/ReportTotals'
         nights:
           type: array
           description: 逐夜一行，按日期升序；没有任何预约的夜也占一行且计零。
-          items: { $ref: "#/components/schemas/ReportNight" }
+          items:
+            $ref: '#/components/schemas/ReportNight'
         caliber_notes:
           type: array
-          items: { type: string }
-
+          items:
+            type: string
     ItemList:
       type: object
-      required: [items, next_cursor]
+      required:
+      - items
+      - next_cursor
       properties:
         items:
           type: array
-          items: { type: object, additionalProperties: true }
-        next_cursor: { type: ["string", "null"] }
-
+          items:
+            type: object
+            additionalProperties: true
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    ChangeFlag:
+      type: string
+      description: 24:00 汇总之后的异动。RESCHEDULED 是改期、CANCELLED 是撤销，均按 R07/R12 允许； ADDED_AFTER_SUMMARY 只可能来自越权或跨夜异常，用于对账，不代表申请被放行。
+      enum:
+      - RESCHEDULED
+      - CANCELLED
+      - ADDED_AFTER_SUMMARY
+    TonightItem:
+      type: object
+      required:
+      - student_id
+      - school_id
+      - display_name
+      - room_no
+      - planned_return_at
+      - reservation_status
+      - return_status
+      description: 名单不含联系方式；点开发消息时另走 /directory/students/{student_id}/contact。 通行情况只来自 B 的正式返宿记录（R10）：reservation_status=FULFILLED
+        不等于已返宿。 现场补录的按门铃学生没有预约，作为新行出现：`reservation_status=NONE`、 `planned_return_at` 取该条人工补录记录的返宿时刻（录入时刻），并标 `ADDED_AFTER_SUMMARY`。
+        已被补录的、本就有预约的学生仍走预约行（晚归时间保留预约时间），不重复成两条。
+      properties:
+        student_id:
+          type: string
+        school_id:
+          type: string
+        display_name:
+          type: string
+        room_no:
+          type: string
+        college_name:
+          type: string
+        grade:
+          type: string
+        planned_return_at:
+          type: string
+          format: date-time
+        reservation_status:
+          type: string
+          enum:
+          - ACTIVE
+          - CANCELLED
+          - FULFILLED
+          - CLOSED
+          - NONE
+        reservation_version:
+          type:
+          - integer
+          - 'null'
+        updated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        change_flag:
+          oneOf:
+          - $ref: '#/components/schemas/ChangeFlag'
+          - type: 'null'
+        return_status:
+          type: string
+          description: PENDING 未通行，ENTERED 二维码核销放行，MANUAL_ENTERED 宿管人工补录。
+          enum:
+          - PENDING
+          - ENTERED
+          - MANUAL_ENTERED
+        entered_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        gate_id:
+          type:
+          - string
+          - 'null'
+        return_source:
+          type:
+          - string
+          - 'null'
+          enum:
+          - QR
+          - MANUAL
+          - null
+    BuildingTonight:
+      type: object
+      required:
+      - building_id
+      - service_date
+      - counters
+      - items
+      - next_cursor
+      properties:
+        building_id:
+          type: string
+        service_date:
+          type: string
+          format: date
+          description: 严格等于此刻所属业务夜；06:00 一到自动切次夜（R04、R12）。
+        summary_generated_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        counters:
+          type: object
+          required:
+          - total
+          - entered
+          description: 已通行 X / 共 N 人；通行只是读展示，不产生任何推送。
+          properties:
+            total:
+              type: integer
+            entered:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TonightItem'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    PassStatus:
+      type: string
+      description: ISSUED 为当前有效码；过期只在扫码时落库，报表按 expires_at 派生为 EXPIRED， 不生成任何通知任务（R15）。
+      enum:
+      - ISSUED
+      - CONSUMED
+      - EXPIRED
+      - REVOKED
+    ReturnSource:
+      type: string
+      enum:
+      - QR
+      - MANUAL
+    ScanAttempt:
+      type: object
+      required:
+      - attempt_status
+      - pass_id
+      - duplicate
+      - device_id
+      - building_id
+      - gate_id
+      - occurred_at
+      properties:
+        attempt_id:
+          type: string
+        attempt_status:
+          type: string
+          enum:
+          - PENDING
+          - SUCCEEDED
+          - FAILED
+          - UNKNOWN
+        pass_id:
+          type: string
+        duplicate:
+          type: boolean
+          description: 同码重扫或回执重放，指向既有记录而非新增
+        device_id:
+          type: string
+        building_id:
+          type: string
+        gate_id:
+          type: string
+        gate_name:
+          type:
+          - string
+          - 'null'
+        return_id:
+          type:
+          - string
+          - 'null'
+        return_source:
+          oneOf:
+          - $ref: '#/components/schemas/ReturnSource'
+          - type: 'null'
+        occurred_at:
+          type: string
+          format: date-time
+    ReturnRecord:
+      type: object
+      required:
+      - return_id
+      - student_id
+      - service_date
+      - source
+      - occurred_at
+      - recorded_at
+      properties:
+        return_id:
+          type: string
+        student_id:
+          type: string
+        service_date:
+          type: string
+          format: date
+        source:
+          $ref: '#/components/schemas/ReturnSource'
+        pass_id:
+          type:
+          - string
+          - 'null'
+        gate_id:
+          type:
+          - string
+          - 'null'
+        gate_name:
+          type:
+          - string
+          - 'null'
+        reservation_id:
+          type:
+          - string
+          - 'null'
+        occurred_at:
+          type: string
+          format: date-time
+          description: 返宿发生时间，人工回填不改变它。
+        recorded_at:
+          type: string
+          format: date-time
+          description: 记录时间
+        evidence:
+          type: object
+          additionalProperties: true
+        idempotency_key:
+          type: string
+    ReturnRecordItem:
+      type: object
+      required:
+      - student_id
+      - school_id
+      - display_name
+      - building_id
+      - service_date
+      description: 一行一条二维码使用情况；人工补录没有码，pass_id 与 pass_status 为空但返宿字段照样填。
+      properties:
+        pass_id:
+          type:
+          - string
+          - 'null'
+        student_id:
+          type: string
+        school_id:
+          type: string
+        display_name:
+          type: string
+        reservation_id:
+          type:
+          - string
+          - 'null'
+        building_id:
+          type: string
+        gate_id:
+          type:
+          - string
+          - 'null'
+        reservation_version:
+          type:
+          - integer
+          - 'null'
+        service_date:
+          type: string
+          format: date
+        window_start:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        window_end:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        issued_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        used_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        pass_status:
+          oneOf:
+          - $ref: '#/components/schemas/PassStatus'
+          - type: 'null'
+        return_id:
+          type:
+          - string
+          - 'null'
+        return_source:
+          oneOf:
+          - $ref: '#/components/schemas/ReturnSource'
+          - type: 'null'
+        returned_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ReturnRecords:
+      type: object
+      required:
+      - service_date
+      - building_id
+      - counters
+      - items
+      - next_cursor
+      properties:
+        service_date:
+          type: string
+          format: date
+        building_id:
+          type:
+          - string
+          - 'null'
+        counters:
+          type: object
+          required:
+          - issued
+          - consumed
+          - expired
+          - revoked
+          - returned
+          properties:
+            issued:
+              type: integer
+              description: 当前状态为 ISSUED 的码
+            consumed:
+              type: integer
+            expired:
+              type: integer
+              description: 含库内 EXPIRED 与按 expires_at 派生的过期
+            revoked:
+              type: integer
+              description: 改期或撤销时作废的码
+            returned:
+              type: integer
+              description: 去重后已产生返宿事实的人数
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReturnRecordItem'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    StudentContact:
+      type: object
+      required:
+      - student_id
+      - building_id
+      - room_no
+      - phone
+      properties:
+        student_id:
+          type: string
+        school_id:
+          type: string
+        display_name:
+          type: string
+        building_id:
+          type: string
+        room_no:
+          type: string
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+        phone:
+          type:
+          - string
+          - 'null'
+    Resident:
+      type: object
+      required:
+      - student_id
+      - school_id
+      - display_name
+      - building_id
+      - room_no
+      properties:
+        student_id:
+          type: string
+        school_id:
+          type: string
+        display_name:
+          type: string
+        building_id:
+          type: string
+        room_no:
+          type: string
+        college_name:
+          type: string
+        grade:
+          type:
+          - string
+          - 'null'
+        gender:
+          type: string
+          enum:
+          - MALE
+          - FEMALE
+    ResidentList:
+      type: object
+      required:
+      - building_id
+      - items
+      - next_cursor
+      properties:
+        building_id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resident'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    StatisticsTotals:
+      type: object
+      required:
+      - people
+      - nights
+      - returns
+      - qr_returns
+      - manual_returns
+      - enrolled
+      - reservations
+      - unconfirmed
+      properties:
+        people:
+          type: integer
+          description: 去晚归人数（区间内至少一夜有正式返宿）
+        nights:
+          type: integer
+          description: 晚归夜数：去重（学生 × 业务夜）
+        returns:
+          type: integer
+          description: 返宿次数：返宿记录条数
+        qr_returns:
+          type: integer
+          description: 来源 QR 的返宿次数
+        manual_returns:
+          type: integer
+          description: 来源 MANUAL 的返宿次数
+        enrolled:
+          type: integer
+          description: 筛选范围内的在册人数（分母）
+        reservations:
+          type:
+          - integer
+          - 'null'
+          description: 区间内非取消预约的去重学生人数
+        unconfirmed:
+          type:
+          - integer
+          - 'null'
+          description: 区间内至少一夜预约未匹配正式返宿记录的去重学生人数，不计实际晚归
+    StatisticRow:
+      allOf:
+      - $ref: '#/components/schemas/StatisticsTotals'
+      - type: object
+        required:
+        - value
+        - label
+        properties:
+          value:
+            type:
+            - string
+            - 'null'
+          label:
+            type: string
+    StatisticDay:
+      allOf:
+      - $ref: '#/components/schemas/StatisticsTotals'
+      - type: object
+        required:
+        - service_date
+        properties:
+          service_date:
+            type: string
+            format: date
+    Statistics:
+      type: object
+      required:
+      - group_by
+      - attribution
+      - range
+      - filters
+      - totals
+      - rows
+      - by_day
+      - data_gaps
+      properties:
+        group_by:
+          type: string
+          enum:
+          - none
+          - college
+          - park
+          - building
+          - grade
+          - gender
+          - trend
+        attribution:
+          type: string
+          enum:
+          - snapshot
+          - current
+        range:
+          type: object
+          required:
+          - date_from
+          - date_to
+          properties:
+            date_from:
+              type: string
+              format: date
+            date_to:
+              type: string
+              format: date
+        filters:
+          type: object
+          additionalProperties:
+            type: string
+        totals:
+          $ref: '#/components/schemas/StatisticsTotals'
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatisticRow'
+        by_day:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatisticDay'
+        data_gaps:
+          type: array
+          items:
+            type: string
+          description: 依赖能力未落地导致的空字段登记，如 RESERVATION_SOURCE_UNAVAILABLE
+    StatisticsOptions:
+      type: object
+      required:
+      - colleges
+      - parks
+      - buildings
+      - grades
+      - genders
+      - return_sources
+      properties:
+        colleges:
+          type: array
+          items:
+            type: object
+            required:
+            - org_id
+            - name
+            properties:
+              org_id:
+                type: string
+              name:
+                type: string
+        parks:
+          type: array
+          items:
+            type: object
+            required:
+            - org_id
+            - name
+            - building_count
+            properties:
+              org_id:
+                type: string
+              name:
+                type: string
+              building_count:
+                type: integer
+        buildings:
+          type: array
+          items:
+            type: object
+            required:
+            - building_id
+            - name
+            - code
+            - park_org_id
+            properties:
+              building_id:
+                type: string
+              name:
+                type: string
+              code:
+                type: string
+              park_org_id:
+                type: string
+        grades:
+          type: array
+          items:
+            type: string
+        genders:
+          type: array
+          items:
+            type: string
+            enum:
+            - MALE
+            - FEMALE
+        return_sources:
+          type: array
+          items:
+            type: string
+            enum:
+            - QR
+            - MANUAL
+    ExportRequest:
+      type: object
+      required:
+      - report
+      - params
+      properties:
+        report:
+          type: string
+          enum:
+          - STATISTICS
+          description: 受控导出的唯一口径来源；明细导出未开放
+        params:
+          type: object
+          description: 与 `/statistics` 完全同一套口径参数，未知键在创建时就被拒绝。 `date_from`、`date_to` 必填；`group_by` 缺省 park，`attribution`
+            缺省 snapshot。
+          required:
+          - date_from
+          - date_to
+          properties:
+            date_from:
+              type: string
+              format: date
+            date_to:
+              type: string
+              format: date
+            college_org_id:
+              type: string
+            park_org_id:
+              type: string
+            building_id:
+              type: string
+            grade:
+              type: string
+            gender:
+              type: string
+              enum:
+              - MALE
+              - FEMALE
+            return_source:
+              type: string
+              enum:
+              - QR
+              - MANUAL
+            group_by:
+              type: string
+              enum:
+              - none
+              - college
+              - park
+              - building
+              - grade
+              - gender
+              - trend
+            attribution:
+              type: string
+              enum:
+              - snapshot
+              - current
+        idempotency_key:
+          type:
+          - string
+          - 'null'
+          description: 同一键重复提交返回同一任务，不重复排队
+    ExportJob:
+      type: object
+      required:
+      - export_id
+      - report
+      - status
+      - requested_by
+      - params
+      - created_at
+      - updated_at
+      - downloadable
+      - file_name
+      - row_count
+      - error
+      - idempotency_key
+      - done_at
+      - expires_at
+      properties:
+        export_id:
+          type: string
+        report:
+          type: string
+          enum:
+          - STATISTICS
+        status:
+          type: string
+          enum:
+          - PENDING
+          - RUNNING
+          - DONE
+          - FAILED
+          description: DONE 且内容未过保留期才可下载
+        requested_by:
+          type: string
+          description: 发起人 user_id，只有本人能列出与下载
+        params:
+          type: object
+          additionalProperties: true
+        file_name:
+          type:
+          - string
+          - 'null'
+        row_count:
+          type:
+          - integer
+          - 'null'
+          description: CSV 数据行数，不含口径说明与合计行
+        error:
+          type:
+          - string
+          - 'null'
+        idempotency_key:
+          type:
+          - string
+          - 'null'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        done_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: done_at + EXPORT_RETENTION_DAYS；到期后内容清空，任务行留作审计
+        downloadable:
+          type: boolean
+    ExportJobList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportJob'
+        next_cursor:
+          type:
+          - string
+          - 'null'
     Error:
       type: object
-      required: [code, message, request_id, details]
+      required:
+      - code
+      - message
+      - request_id
+      - details
       properties:
         code:
           type: string
-          description: >-
-            错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID,
-            SUBJECT_NOT_FOUND, FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED,
-            DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR,
-            VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED,
-            RESERVATION_NOT_EDITABLE, RESERVATION_NOT_FOUND, ACCOUNT_DISABLED,
-            LOGIN_NAME_TAKEN, STAFF_ACCOUNT_NOT_FOUND, NOTIFICATION_NOT_FOUND,
-            NOTIFICATION_RECIPIENT_FORBIDDEN, NOTIFICATION_TEMPLATE_MISMATCH。
+          description: 错误码。已使用：UNAUTHENTICATED, BAD_CREDENTIALS, SESSION_INVALID, SUBJECT_NOT_FOUND, FORBIDDEN_ACTION,
+            ROLE_NOT_ASSIGNED, SCOPE_UNRESOLVED, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR,
+            RESERVATION_CREATION_CLOSED, VERSION_CONFLICT, RESERVATION_EXISTS, RESERVATION_CANCELLED, RESERVATION_NOT_EDITABLE,
+            RESERVATION_NOT_FOUND, ACCOUNT_DISABLED, LOGIN_NAME_TAKEN, STAFF_ACCOUNT_NOT_FOUND, NOTIFICATION_NOT_FOUND,
+            NOTIFICATION_RECIPIENT_FORBIDDEN, NOTIFICATION_TEMPLATE_MISMATCH。 FORBIDDEN_ACTION, ROLE_NOT_ASSIGNED,
+            SCOPE_UNRESOLVED, OUT_OF_SCOPE, DATABASE_UNAVAILABLE, NOT_IMPLEMENTED, VALIDATION_FAILED, INTERNAL_ERROR,
+            DEVICE_UNKNOWN, DEVICE_UNAUTHORIZED, PASS_NOT_FOUND, PASS_REVOKED, PASS_EXPIRED, PASS_CONSUMED, GATE_MISMATCH,
+            NIGHT_ACCESS_ENDED, RETURN_EXISTS, EXPORT_NOT_FOUND, EXPORT_NOT_READY, EXPORT_FAILED, EXPORT_EXPIRED。
             新增错误码必须同时更新文档与前端处理。
-        message: { type: string }
-        request_id: { type: string }
-        details: { type: object, additionalProperties: true }
+        message:
+          type: string
+        request_id:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    UserProfile:
+      type: object
+      required:
+      - user_id
+      - display_name
+      - identity_types
+      - roles
+      - college_org_id
+      - student_id
+      - position_title
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        identity_types:
+          type: array
+          items:
+            type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        college_org_id:
+          type:
+          - string
+          - 'null'
+        student_id:
+          type:
+          - string
+          - 'null'
+        position_title:
+          type: string
+    RoleGrantRequest:
+      type: object
+      required:
+      - user_id
+      - role
+      properties:
+        user_id:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        student_ids:
+          type: array
+          items:
+            type: string
+        college_org_ids:
+          type: array
+          items:
+            type: string
+    RoleGrant:
+      type: object
+      required:
+      - id
+      - user_id
+      - role
+      - student_ids
+      - college_org_ids
+      - active
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        student_ids:
+          type: array
+          items:
+            type: string
+        college_org_ids:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+    StudentDirectoryItem:
+      type: object
+      required:
+      - student_id
+      - school_id
+      - display_name
+      - college_org_id
+      - college_name
+      - grade
+      - major
+      - class_name
+      - building_id
+      properties:
+        student_id:
+          type: string
+        school_id:
+          type: string
+        display_name:
+          type: string
+        college_org_id:
+          type: string
+        college_name:
+          type: string
+        grade:
+          type: string
+        major:
+          type: string
+        class_name:
+          type: string
+        building_id:
+          type:
+          - string
+          - 'null'
+    VerificationRequest:
+      type: object
+      required:
+      - reservation_id
+      - expected_version
+      - face_result
+      - presence_result
+      properties:
+        reservation_id:
+          type: string
+        expected_version:
+          type: integer
+        face_result:
+          type: boolean
+        presence_result:
+          type: boolean
+    IssuedPass:
+      type: object
+      required:
+      - pass_id
+      - token
+      - expires_at
+      - issued_at
+      - building_id
+      - service_date
+      - qr_svg
+      properties:
+        pass_id:
+          type: string
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        issued_at:
+          type: string
+          format: date-time
+        building_id:
+          type: string
+        service_date:
+          type: string
+          format: date
+        qr_svg:
+          type: string
+    VerificationResult:
+      type: object
+      required:
+      - verification_id
+      - status
+      - simulated
+      - pass
+      properties:
+        verification_id:
+          type: string
+        status:
+          type: string
+        simulated:
+          type: boolean
+        pass:
+          $ref: '#/components/schemas/IssuedPass'
+    ReportSubscription:
+      type: object
+      required:
+      - daily
+      - weekly
+      properties:
+        daily:
+          type: boolean
+        weekly:
+          type: boolean
+    RiskEvent:
+      type: object
+      required:
+      - id
+      - student_id
+      - service_date
+      - status
+      - rule_version
+      - facts
+      - created_at
+      - updated_at
+      properties:
+        actions:
+          type: array
+          items:
+            type: object
+            required: [id, actor_user_id, action, note, created_at]
+            properties:
+              id:
+                type: string
+              actor_user_id:
+                type: string
+              action:
+                type: string
+                enum: [ACK, RESOLVE]
+              note:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+        id:
+          type: string
+        student_id:
+          type: string
+        service_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+          - OPEN
+          - ACKNOWLEDGED
+          - RESOLVED
+        rule_version:
+          type: string
+        facts:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RiskActionRequest:
+      type: object
+      required:
+      - note
+      properties:
+        note:
+          type: string
+    RiskPolicy:
+      type: object
+      required:
+      - version
+      - window_nights
+      - times_threshold
+      - consecutive_threshold
+      properties:
+        version:
+          type: string
+        window_nights:
+          type: integer
+          minimum: 1
+        times_threshold:
+          type: integer
+          minimum: 1
+        consecutive_threshold:
+          type: integer
+          minimum: 1
+    DutyAssignmentRequest:
+      type: object
+      required:
+      - staff_user_id
+      - building_id
+      - shift_start
+      - shift_end
+      properties:
+        staff_user_id:
+          type: string
+        building_id:
+          type: string
+        shift_start:
+          type: string
+          format: date-time
+        shift_end:
+          type: string
+          format: date-time
+    ReturnCorrectionRequest:
+      type: object
+      required:
+      - note
+      properties:
+        note:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+    AccessReceiptRequest:
+      type: object
+      required:
+      - event_id
+      - attempt_id
+      - status
+      - occurred_at
+      properties:
+        event_id:
+          type: string
+        attempt_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - SUCCEEDED
+          - FAILED
+          - UNKNOWN
+        occurred_at:
+          type: string
+          format: date-time
+    DemoObject:
+      type: object
+      additionalProperties: true
+    DemoObjectList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DemoObject'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    RoleGrantList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleGrant'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    StudentDirectoryList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentDirectoryItem'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    RiskEventList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RiskEvent'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    ManagedUser:
+      allOf:
+      - $ref: '#/components/schemas/UserProfile'
+      - type: object
+        required:
+        - school_id
+        - login_name
+        - source
+        properties:
+          school_id:
+            type: string
+          login_name:
+            type: string
+          source:
+            type: string
+    DutyAssignment:
+      type: object
+      required:
+      - duty_id
+      - staff_user_id
+      - building_id
+      - shift_start
+      - shift_end
+      - is_substitute
+      properties:
+        duty_id:
+          type: string
+        staff_user_id:
+          type: string
+        building_id:
+          type: string
+        shift_start:
+          type: string
+          format: date-time
+        shift_end:
+          type: string
+          format: date-time
+        is_substitute:
+          type: boolean
+    VerificationError:
+      $ref: '#/components/schemas/Error'
+    ManagedUserList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManagedUser'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    DutyAssignmentList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DutyAssignment'
+        next_cursor:
+          type:
+          - string
+          - 'null'

@@ -274,7 +274,13 @@ export const api = {
   riskPolicy: () => request<components['schemas']['RiskPolicy']>('/risk-policy'),
   saveRiskPolicy: (body: components['schemas']['RiskPolicy']) => request<components['schemas']['RiskPolicy']>('/risk-policy', {method: 'PUT', body: JSON.stringify(body)}),
   duties: () => request<components['schemas']['DutyAssignmentList']>('/duty-assignments'),
-  assignDuty: (body: components['schemas']['DutyAssignmentRequest']) => request<Record<string, unknown>>('/duty-assignments', {method: 'POST', body: JSON.stringify(body)}),
+  dutyRoster: (params: Record<string, string | undefined> = {}) =>
+    request<components['schemas']['DutyRosterList']>(`/duty-roster${queryString(params)}`),
+  setDutyRoster: (body: components['schemas']['DutyRosterRequest']) =>
+    request<components['schemas']['DutyRosterItem']>('/duty-roster', { method: 'POST', body: JSON.stringify(body) }),
+  revokeDutyRoster: (body: components['schemas']['DutyRosterRevokeRequest']) =>
+    request<components['schemas']['DutyRosterItem']>('/duty-roster/revoke', { method: 'POST', body: JSON.stringify(body) }),
+  assignDuty: (body: components['schemas']['DutyAssignmentRequest']) => request<components['schemas']['DutyAssignment']>('/duty-assignments', {method: 'POST', body: JSON.stringify(body)}),
   revokeDuty: (id: string) => request<Record<string, unknown>>(`/duty-assignments/${id}`, {method: 'DELETE'}),
   riskEvents: () => request<ListResult<Record<string, unknown>>>('/risk-events'),
   statistics: (params: Record<string, string | undefined> = {}) =>

@@ -9,7 +9,8 @@
       "major": "合成计算机专业",
       "grade": "2023",
       "class_name": "2023级合成1班",
-      "building_id": "bldg_a1"
+      "building_id": "bldg_a1",
+      "building_name": "东1 号楼"
     }
   ],
   "next_cursor": null

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidatePattern('^[a-z][a-z0-9_]*$')][string]$DatabaseName = 'jwg_campus_experience',
     [string]$ClockFile = ''
 )
@@ -21,8 +21,16 @@ if ($LASTEXITCODE -ne 0) { throw '数据库恢复失败；保留现场，不启�
 $studentCount = docker exec jiaowogui-postgres psql -U demo -d $DatabaseName -Atc 'SELECT count(*) FROM students'
 if ($LASTEXITCODE -ne 0 -or $studentCount.Trim() -ne '1000') { throw '恢复后学生人数验证失败。' }
 New-Item -ItemType Directory -Path (Join-Path $projectRoot 'tmp') -Force | Out-Null
-$env:DEMO_CLOCK_FILE = if ($ClockFile) { $ClockFile } else { Join-Path $projectRoot 'tmp/campus-experience-clock.json' }
+$env:DEMO_CLOCK_FILE = if ($ClockFile) { [System.IO.Path]::GetFullPath($ClockFile) } else { Join-Path $projectRoot 'tmp/campus-experience-clock.json' }
 $env:PYTHONPATH = Join-Path $projectRoot 'apps/api'
+$env:DATABASE_URL = "postgresql+psycopg://demo:demo@localhost:5432/$DatabaseName"
+Push-Location (Join-Path $projectRoot 'apps/api')
+try {
+    & $python -m alembic upgrade head
+    if ($LASTEXITCODE -ne 0) { throw '数据库已恢复，但增量迁移失败；保留现场，不启动服务。' }
+} finally { Pop-Location }
+& $python -m app.db.upgrade_demo_snapshot
+if ($LASTEXITCODE -ne 0) { throw '数据库已恢复，但合成目录升级失败；保留现场，不启动服务。' }
 & $python -c 'import json; from datetime import datetime; from pathlib import Path; from app.core.clock import build_clock,Clock; raw=json.loads(Path("data/demo/campus-1000.manifest.json").read_text(encoding="utf-8")); now=Clock("Asia/Shanghai").now(); build_clock().offset=datetime.fromisoformat(raw["server_clock"]["now"])-now'
 if ($LASTEXITCODE -ne 0) { throw '数据库已恢复，但演示时钟恢复失败，请检查后端依赖。' }
-Write-Output '已恢复 1000 人数据库与演示时钟；运行 ./scripts/start-campus-experience.ps1 启动，勿加 -ResetData。'
+Write-Output "已恢复 1000 人数据库与演示时钟；运行 ./scripts/start-campus-experience.ps1 -DatabaseName $DatabaseName -ClockFile `"$env:DEMO_CLOCK_FILE`" 启动，勿加 -ResetData。"

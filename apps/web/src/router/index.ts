@@ -109,7 +109,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'profile', name: 'profile', component: () => import('@/features/management/views/ProfileView.vue'), meta: { label: '我的身份' } },
       { path: 'management/permissions', name: 'permissions', component: () => import('@/features/management/views/PermissionsView.vue'), meta: { roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN'], label: '权限与负责关系', action: 'permission:manage' } },
       { path: 'management/statistics', name: 'school-statistics', component: () => import('@/features/management/views/SchoolStatisticsView.vue'), meta: { roles: ['AUTH_ADMIN'], label: '查看晚归情况', action: 'report:statistics' } },
-      { path: 'campus/duties', name: 'duties', component: () => import('@/features/management/views/DutyView.vue'), meta: { roles: ['CAMPUS'], label: '宿管值班指派', action: 'duty:assign' } },
+      { path: 'campus/duties', name: 'duties', component: () => import('@/features/management/views/DutyView.vue'), meta: { roles: ['CAMPUS'], label: '楼栋值班安排', action: 'duty:assign' } },
       { path: 'campus/risk-policy', name: 'risk-policy', component: () => import('@/features/management/views/PolicyView.vue'), meta: { roles: ['CAMPUS'], label: '风险规则版本', action: 'risk:config' } },
       {
         path: 'guide',

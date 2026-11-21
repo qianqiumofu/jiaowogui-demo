@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # `dorm_summary_at` 是业务夜 D 的名单汇总时刻，同时是 D 那一夜的首次申请截止（R12）；
     # `24:00` 即 D+1 00:00，判定统一走 app.core.clock.summary_moment。
     dorm_summary_at: str = "24:00"
+    # 固定名册每晚重复的展示班次（Demo 默认，非校规）；权限按业务夜有效日期判断。
+    duty_fixed_shift_start: str = Field(default="18:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    duty_fixed_shift_end: str = Field(default="06:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     daily_report_at: str = "08:30"
     weekly_report_at: str = "09:00"
     weekly_report_weekday: int = 0

@@ -1,0 +1,15 @@
+{
+  "roster_id": "roster_synth_a1_w3001",
+  "building_id": "bldg_a1",
+  "building_name": "东1 号楼",
+  "park_org_id": "campus_park_east1",
+  "park_name": "东一区",
+  "staff_user_id": "usr_synth_0003",
+  "staff_name": "王宿管",
+  "shift_start": "18:00",
+  "shift_end": "06:00",
+  "valid_from": "2026-09-01",
+  "valid_to": null,
+  "covers_tonight": true,
+  "on_duty_now": true
+}

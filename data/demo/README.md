@@ -34,3 +34,10 @@ docker compose ps
 ## 非 Windows
 
 使用同一快照，通过 `docker cp` 将文件送入容器，并用 `createdb` 新建体验库、`pg_restore --no-owner --no-privileges --exit-on-error` 恢复。后端 `DATABASE_URL` 指向该库，API 使用 8001，前端设置 `JWG_API_TARGET=http://127.0.0.1:8001` 并使用 5174，worker 与 API 指向同一时钟文件。Python 安装入口按平台使用 `python3.13`；PowerShell 脚本无需在其他平台直接运行。
+
+
+## 2026-11-21 恢复补齐
+
+原始快照与校验和保持不变（0018，10栋目录）。恢复脚本现自动迁移到唯一头0022，再运行 `app.db.upgrade_demo_snapshot`，升级到107栋并按已知千人合成生成规则补齐缺失培养层次；已有非空值、预约、返宿与账号口令保留。真实或自定义档案不推断。已在独立 PostgreSQL 库实际恢复验证。
+
+如用自定义参数恢复，使用脚本输出的同名 `-DatabaseName` 与绝对 `-ClockFile` 启动，不能再启动默认库。日常使用 `scripts/stop-campus-experience.ps1` 停本项目，`scripts/start-campus-experience.ps1` 起服务，不传 `-ResetData`。

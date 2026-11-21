@@ -28,7 +28,8 @@ def test_thousand_student_experience(postgres_schema, client):
             assert scalar("SELECT count(*) FROM role_assignments WHERE role='COLLEGE_ADMIN' AND active") == 5
             assert scalar("SELECT count(*) FROM role_assignments WHERE role='COUNSELOR' AND active") == 20
             assert scalar("SELECT count(*) FROM users WHERE source='STAFF_LOCAL'") == 20
-            assert scalar("SELECT count(DISTINCT building_id) FROM duty_assignments") == 10
+            assert scalar("SELECT count(DISTINCT building_id) FROM building_duty_roster") == 10
+            assert scalar("SELECT count(*) FROM duty_assignments WHERE NOT is_substitute") == 0
             assert scalar("SELECT count(*) FROM (SELECT student_id,service_date FROM return_records GROUP BY 1,2 HAVING count(*)>1) x") == 0
             assert scalar("SELECT count(*) FROM return_records") > 500
             assert scalar("SELECT count(*) FROM return_records WHERE source='QR' AND pass_id IS NOT NULL") > 0

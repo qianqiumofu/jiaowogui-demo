@@ -9,6 +9,7 @@ from app.modules.authorization.router import router as authorization_router
 from app.modules.building_list.router import router as building_list_router
 from app.modules.building_list.router import campus_router as campus_night_router
 from app.modules.directory.router import router as directory_router
+from app.modules.duty.router import roster_router as duty_roster_router
 from app.modules.duty.router import router as duty_router
 from app.modules.exports.router import router as exports_router
 from app.modules.identity.router import router as identity_router
@@ -40,6 +41,7 @@ api_router.include_router(campus_night_router)
 api_router.include_router(directory_router)
 api_router.include_router(returns_router)
 api_router.include_router(duty_router)
+api_router.include_router(duty_roster_router)
 api_router.include_router(statistics_router)
 api_router.include_router(exports_router)
 # B 新增模块在此追加：from app.modules.<name>.router import router as <name>_router

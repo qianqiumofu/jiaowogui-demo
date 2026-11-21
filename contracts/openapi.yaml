@@ -87,6 +87,7 @@ paths:
   /auth/demo-accounts:
     get:
       summary: 列出合成登录账号
+      description: 仅列可用默认演示口令快捷登录的种子账号；已重置口令的工号账号不列出，需手工输入新口令，绝不返回新口令。
       responses:
         '200':
           description: 合成体验账号列表；千人场景含各学院负责人、教师和宿管，学生保留代表账号，其余可输入合成登录名。
@@ -910,7 +911,9 @@ paths:
                 $ref: '#/components/schemas/Error'
   /duty-assignments:
     post:
-      summary: 园区指派值班或代班，宿管不可自行扩权
+      summary: 园区登记当夜代班，宿管不可自行扩权
+      description: 与 `/duty-assignments/switch` 同一件事的兼容入口；固定值守负责人在 `/duty-roster` 维护，
+        这里只追加「某一夜多管一栋」的代班。
       operationId: post_duty-assignments
       responses:
         '201':
@@ -950,7 +953,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      description: 宿管只列本人班次，园区列已指派班次，其他获授读取动作的角色不返回他人班次。
+      description: 按夜代班一览：宿管只列本人代班，园区列已登记的代班，其他获授读取动作的角色不返回他人班次。
+        长期固定值守负责人在 `GET /duty-roster`。
   /duty-assignments/switch:
     post:
       summary: 跨楼栋代班切换
@@ -976,6 +980,108 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DutyAssignmentRequest'
+  /duty-roster:
+    get:
+      summary: 楼栋固定值班名册
+      description: 动作 duty:read。园区列全校名册，可按楼栋、人员或片区收窄；宿管与辅导员即使带上别人的
+        `staff_user_id` 也一律强制收窄到本人，绕过前端读不到同事的排班。固定值守按业务夜整段生效（R11），
+        所以 `covers_tonight` 说「这一夜归不归她管」，`on_duty_now` 才乘每晚重复的班次窗口说「此刻在不在岗」。
+      operationId: get_duty-roster
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: building_id
+        in: query
+        schema:
+          type: string
+      - name: staff_user_id
+        in: query
+        description: 园区可按人筛；非园区角色一律忽略并按本人收窄
+        schema:
+          type: string
+      - name: park_org_id
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DutyRosterList'
+        '403':
+          description: 动作、范围或输入被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: 园区登记或更换楼栋固定值班负责人
+      description: 动作 duty:assign，仅园区。写入即对之后每一夜生效，不需要逐夜授权；同一人同一栋只一条，
+        一栋可以并排白班与夜班两位，因此不清本人别栋的固定班。缺省窗口 18:00—次日 06:00，缺省生效日是当前业务夜。
+      operationId: post_duty-roster
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DutyRosterRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DutyRosterItem'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: 缺少字段、窗口起止相同或失效日期不晚于生效日期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /duty-roster/revoke:
+    post:
+      summary: 园区卸任楼栋的某一位固定值班负责人
+      description: 动作 duty:assign，仅园区。一栋可能并排两位，所以必须指到人，不做整栋清空；删行的瞬间
+        该人该夜的固定范围即收回，并同步解掉工号账号上那一条楼栋绑定，否则名册删了人、阿姨照样进得来名单。
+        那一夜已排定的 24:00 汇总任务不回滚——负责人名字在汇总时刻冻结。
+      operationId: post_duty-roster_revoke
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DutyRosterRevokeRequest'
+      responses:
+        '200':
+          description: 成功，返回被卸任的那一行
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DutyRosterItem'
+        '403':
+          description: 动作或数据范围被拒
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 该楼栋没有这位固定负责人（DUTY_ROSTER_NOT_FOUND）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /statistics:
     get:
       summary: 全校晚归统计（园区全校；辅导员/思政/学院负责人按范围收窄）
@@ -1424,7 +1530,7 @@ paths:
   /notification-dispatch:
     post:
       summary: 演示投递：按模板渲染并入队通知任务
-      description: 仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与 值班关系派生（23:30 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警
+      description: 仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与 值班关系派生（24:00 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警
         → 辅导员 + 当班宿管）， 在 B 的目录与 duty 落地前不开放自选收件人。 服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、 同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
       security:
       - bearerAuth: []
@@ -3185,7 +3291,7 @@ components:
         deliver_now:
           type: boolean
           default: false
-          description: 演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费； false 时按配置的计划时刻排队（23:30 名单、次日 08:30 日报、周一 09:00 周报）。
+          description: 演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费； false 时按配置的计划时刻排队（24:00 名单、次日 08:30 日报、周一 09:00 周报）。
             worker 与 API 的演示时钟偏移不互通，跨进程共享偏移见 docs/13。
     NotificationDispatchResult:
       type: object
@@ -4256,6 +4362,7 @@ components:
       - major
       - class_name
       - building_id
+      - building_name
       properties:
         student_id:
           type: string
@@ -4274,6 +4381,11 @@ components:
         class_name:
           type: string
         building_id:
+          type:
+          - string
+          - 'null'
+        building_name:
+          description: 当前住宿楼栋展示名；未同步住宿时为空。
           type:
           - string
           - 'null'
@@ -4559,6 +4671,7 @@ components:
             type: string
     DutyAssignment:
       type: object
+      description: 按夜代班的一行；固定值守负责人在 `DutyRosterItem`，这张表只承载「某一夜多管一栋」。
       required:
       - duty_id
       - staff_user_id
@@ -4581,6 +4694,29 @@ components:
           format: date-time
         is_substitute:
           type: boolean
+        service_date:
+          type: string
+          format: date
+          description: 该班所属的业务夜 D（[D 06:00, D+1 06:00)）
+        shift_state:
+          type: string
+          enum:
+          - SCHEDULED
+          - ACTIVE
+          - ENDED
+          description: 服务端按当前时刻算出的班次状态；时刻判定只在后端做一次，前端不读浏览器时钟
+        staff_name:
+          type: string
+        building_name:
+          type: string
+        park_org_id:
+          type:
+          - string
+          - 'null'
+        park_name:
+          type:
+          - string
+          - 'null'
     VerificationError:
       $ref: '#/components/schemas/Error'
     ManagedUserList:
@@ -4611,6 +4747,108 @@ components:
           type:
           - string
           - 'null'
+    DutyRosterItem:
+      type: object
+      description: 一栋一位固定值守人的班次段落；窗口是每晚重复的时刻（HH:MM），跨零点由服务端回绕判定，不是时间戳。
+      required:
+      - roster_id
+      - building_id
+      - building_name
+      - staff_user_id
+      - staff_name
+      - shift_start
+      - shift_end
+      - valid_from
+      - covers_tonight
+      - on_duty_now
+      properties:
+        roster_id:
+          type: string
+        building_id:
+          type: string
+        building_name:
+          type: string
+        park_org_id:
+          type:
+          - string
+          - 'null'
+        park_name:
+          type:
+          - string
+          - 'null'
+        staff_user_id:
+          type: string
+        staff_name:
+          type: string
+        shift_start:
+          type: string
+          description: 每晚重复的上岗时刻，HH:MM
+        shift_end:
+          type: string
+          description: 每晚重复的离岗时刻，HH:MM；早于开始即跨零点
+        valid_from:
+          type: string
+          format: date
+        valid_to:
+          type:
+          - string
+          - 'null'
+          format: date
+        covers_tonight:
+          type: boolean
+          description: 生效区间是否覆盖当前业务夜——值守范围看这条（R11）
+        on_duty_now:
+          type: boolean
+          description: 此刻是否落在重复班次窗口内，仅展示
+    DutyRosterList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DutyRosterItem'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+    DutyRosterRequest:
+      type: object
+      required:
+      - building_id
+      - staff_user_id
+      properties:
+        building_id:
+          type: string
+        staff_user_id:
+          type: string
+        shift_start:
+          type: string
+          description: 缺省 18:00
+        shift_end:
+          type: string
+          description: 缺省次日 06:00
+        valid_from:
+          type: string
+          format: date
+          description: 缺省当前业务夜
+        valid_to:
+          type:
+          - string
+          - 'null'
+          format: date
+    DutyRosterRevokeRequest:
+      type: object
+      required:
+      - building_id
+      - staff_user_id
+      properties:
+        building_id:
+          type: string
+        staff_user_id:
+          type: string
 
     SchoolOverview:
       type: object

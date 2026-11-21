@@ -9,7 +9,7 @@ ID 为不透明字符串，演示数据固定 ID 见 docs/10-演示数据与账�
 from __future__ import annotations
 
 import hashlib
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (
     Boolean,
@@ -21,6 +21,7 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
+    Time,
     UniqueConstraint,
     func,
 )
@@ -202,6 +203,41 @@ class DutyAssignment(Base):
     shift_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     shift_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_substitute: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class BuildingDutyRoster(Base):
+    """楼栋固定值班名册：园区端维护的长期值守范围，`duty_assignments` 只留按夜代班。
+
+    `shift_start/shift_end` 是每晚重复的时刻段而非时间戳，跨零点由读取侧回绕判定，
+    所以同一栋楼可以并排白班与夜班两位；`valid_from/valid_to` 只框定覆盖的业务夜区间。
+    """
+
+    __tablename__ = "building_duty_roster"
+    __table_args__ = (
+        UniqueConstraint("building_id", "staff_user_id", name="uq_duty_roster_slot"),
+        CheckConstraint("shift_start <> shift_end", name="ck_duty_roster_window"),
+        CheckConstraint(
+            "valid_to IS NULL OR valid_to > valid_from", name="ck_duty_roster_valid_range"
+        ),
+    )
+
+    roster_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    building_id: Mapped[str] = mapped_column(
+        ForeignKey("buildings.building_id"), nullable=False, index=True
+    )
+    staff_user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.user_id"), nullable=False, index=True
+    )
+    shift_start: Mapped[time] = mapped_column(Time, nullable=False)
+    shift_end: Mapped[time] = mapped_column(Time, nullable=False)
+    valid_from: Mapped[date] = mapped_column(Date, nullable=False)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class BackgroundJob(Base):

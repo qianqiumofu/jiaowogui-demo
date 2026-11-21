@@ -19,6 +19,8 @@ const contacts = ref<Record<string, StudentContact>>({})
 const contactErrors = ref<Record<string, string>>({})
 
 const buildings = computed(() => session.context?.scope.building_ids ?? [])
+// 楼栋名只有值班接口给得出：固定值守读名册、当夜代班读代班表，读不到就退回裸 ID。
+const buildingLabels = ref<Record<string, string>>({})
 const items = computed<TonightItem[]>(() => data.value?.items ?? [])
 const summaryPassed = computed(() => Boolean(data.value?.summary_generated_at))
 const changedCount = computed(() => items.value.filter((item) => item.change_flag).length)
@@ -27,6 +29,21 @@ const FLAG_LABEL: Record<string, string> = {
   RESCHEDULED: '改期',
   CANCELLED: '撤销',
   ADDED_AFTER_SUMMARY: '汇总后新增',
+}
+
+async function loadBuildingLabels() {
+  try {
+    const [rosterResult, dutyResult] = await Promise.all([api.dutyRoster(), api.duties()])
+    const map: Record<string, string> = {}
+    for (const row of rosterResult.items) map[row.building_id] = `${row.building_name}（固定值守）`
+    for (const row of dutyResult.items) {
+      if (row.shift_state !== 'ACTIVE' || !row.building_name) continue
+      map[row.building_id] = `${row.building_name}（${map[row.building_id] ? '固定值守 + ' : ''}今晚代班）`
+    }
+    buildingLabels.value = map
+  } catch {
+    buildingLabels.value = {}
+  }
 }
 
 async function load() {
@@ -82,6 +99,7 @@ watch(buildings, (list) => {
 
 onMounted(() => {
   activeBuilding.value = buildings.value[0] ?? ''
+  void loadBuildingLabels()
 })
 </script>
 
@@ -102,7 +120,7 @@ onMounted(() => {
           type="button"
           @click="activeBuilding = building"
         >
-          {{ building }}
+          {{ buildingLabels[building] ?? building }}
         </button>
       </nav>
 

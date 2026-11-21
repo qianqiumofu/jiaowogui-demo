@@ -26,7 +26,7 @@ const ITEMS: Array<NavItem & { roles: Role[]; action?: string }> = [
   { to: '/app/shared/records', name: 'shared-records', label: '返宿记录', roles: ['COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'DORM_MANAGER'], stage: 'M3' },
   { to: '/app/profile', name: 'profile', label: '我的身份', roles: ['STUDENT', 'DORM_MANAGER', 'COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'AUTH_ADMIN', 'TEACHER', 'CAMPUS'] },
   { to: '/app/management/permissions', name: 'permissions', label: '权限与负责关系', roles: ['AUTH_ADMIN', 'COLLEGE_ADMIN'], action: 'permission:manage' },
-  { to: '/app/campus/duties', name: 'duties', label: '宿管值班指派', roles: ['CAMPUS'], action: 'duty:assign' },
+  { to: '/app/campus/duties', name: 'duties', label: '楼栋值班安排', roles: ['CAMPUS'], action: 'duty:assign' },
   { to: '/app/campus/risk-policy', name: 'risk-policy', label: '风险规则版本', roles: ['CAMPUS'], action: 'risk:config' },
   { to: '/app/guide', name: 'guide', label: '操作指南', roles: ['STUDENT', 'DORM_MANAGER', 'COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'AUTH_ADMIN', 'TEACHER', 'CAMPUS'] },
   { to: '/app/settings', name: 'settings', label: '设置', roles: ['STUDENT', 'DORM_MANAGER', 'COUNSELOR', 'IDEOLOGY', 'COLLEGE_ADMIN', 'AUTH_ADMIN', 'TEACHER', 'CAMPUS'] },

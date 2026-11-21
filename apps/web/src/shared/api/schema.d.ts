@@ -51,7 +51,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 列出合成登录账号 */
+        /**
+         * 列出合成登录账号
+         * @description 仅列可用默认演示口令快捷登录的种子账号；已重置口令的工号账号不列出，需手工输入新口令，绝不返回新口令。
+         */
         get: {
             parameters: {
                 query?: never;
@@ -1615,7 +1618,7 @@ export interface paths {
         };
         /**
          * 值班与代班范围
-         * @description 宿管只列本人班次，园区列已指派班次，其他获授读取动作的角色不返回他人班次。
+         * @description 按夜代班一览：宿管只列本人代班，园区列已登记的代班，其他获授读取动作的角色不返回他人班次。 长期固定值守负责人在 `GET /duty-roster`。
          */
         get: {
             parameters: {
@@ -1647,7 +1650,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** 园区指派值班或代班，宿管不可自行扩权 */
+        /**
+         * 园区登记当夜代班，宿管不可自行扩权
+         * @description 与 `/duty-assignments/switch` 同一件事的兼容入口；固定值守负责人在 `/duty-roster` 维护， 这里只追加「某一夜多管一栋」的代班。
+         */
         post: operations["post_duty-assignments"];
         delete?: never;
         options?: never;
@@ -1701,6 +1707,50 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/duty-roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 楼栋固定值班名册
+         * @description 动作 duty:read。园区列全校名册，可按楼栋、人员或片区收窄；宿管与辅导员即使带上别人的 `staff_user_id` 也一律强制收窄到本人，绕过前端读不到同事的排班。固定值守按业务夜整段生效（R11）， 所以 `covers_tonight` 说「这一夜归不归她管」，`on_duty_now` 才乘每晚重复的班次窗口说「此刻在不在岗」。
+         */
+        get: operations["get_duty-roster"];
+        put?: never;
+        /**
+         * 园区登记或更换楼栋固定值班负责人
+         * @description 动作 duty:assign，仅园区。写入即对之后每一夜生效，不需要逐夜授权；同一人同一栋只一条， 一栋可以并排白班与夜班两位，因此不清本人别栋的固定班。缺省窗口 18:00—次日 06:00，缺省生效日是当前业务夜。
+         */
+        post: operations["post_duty-roster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/duty-roster/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 园区卸任楼栋的某一位固定值班负责人
+         * @description 动作 duty:assign，仅园区。一栋可能并排两位，所以必须指到人，不做整栋清空；删行的瞬间 该人该夜的固定范围即收回，并同步解掉工号账号上那一条楼栋绑定，否则名册删了人、阿姨照样进得来名单。 那一夜已排定的 24:00 汇总任务不回滚——负责人名字在汇总时刻冻结。
+         */
+        post: operations["post_duty-roster_revoke"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2080,7 +2130,7 @@ export interface paths {
         put?: never;
         /**
          * 演示投递：按模板渲染并入队通知任务
-         * @description 仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与 值班关系派生（23:30 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警 → 辅导员 + 当班宿管）， 在 B 的目录与 duty 落地前不开放自选收件人。 服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、 同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
+         * @description 仅园区角色（notification:dispatch）。这是演示用的手动入口：正式版的收件人由服务端按目录与 值班关系派生（24:00 名单 → 当班宿管；日报周报 → 负责辅导员；风险预警 → 辅导员 + 当班宿管）， 在 B 的目录与 duty 落地前不开放自选收件人。 服务端强制三条边界：园区不作为风险预警收件人（R16）、模板与收件人角色不匹配拒绝、 同一（模板 + 业务夜 + 收件人集合）重复提交不再入队。正文一律不含超时未返宿提醒（R15）。
          */
         post: {
             parameters: {
@@ -3323,7 +3373,7 @@ export interface components {
             /** @description 仅用于收窄正文取数范围；省略即当前授权范围内的全部预约。 正式版的范围来自目录关系，不由调用方指定。 */
             student_ids?: string[];
             /**
-             * @description 演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费； false 时按配置的计划时刻排队（23:30 名单、次日 08:30 日报、周一 09:00 周报）。 worker 与 API 的演示时钟偏移不互通，跨进程共享偏移见 docs/13。
+             * @description 演示开关：true 时计划时刻取服务端当前时间，worker 下一轮即可消费； false 时按配置的计划时刻排队（24:00 名单、次日 08:30 日报、周一 09:00 周报）。 worker 与 API 的演示时钟偏移不互通，跨进程共享偏移见 docs/13。
              * @default false
              */
             deliver_now: boolean;
@@ -3750,6 +3800,8 @@ export interface components {
             major: string;
             class_name: string;
             building_id: string | null;
+            /** @description 当前住宿楼栋展示名；未同步住宿时为空。 */
+            building_name: string | null;
         };
         VerificationRequest: {
             reservation_id: string;
@@ -3862,6 +3914,7 @@ export interface components {
             login_name: string;
             source: string;
         };
+        /** @description 按夜代班的一行；固定值守负责人在 `DutyRosterItem`，这张表只承载「某一夜多管一栋」。 */
         DutyAssignment: {
             duty_id: string;
             staff_user_id: string;
@@ -3871,6 +3924,20 @@ export interface components {
             /** Format: date-time */
             shift_end: string;
             is_substitute: boolean;
+            /**
+             * Format: date
+             * @description 该班所属的业务夜 D（[D 06:00, D+1 06:00)）
+             */
+            service_date?: string;
+            /**
+             * @description 服务端按当前时刻算出的班次状态；时刻判定只在后端做一次，前端不读浏览器时钟
+             * @enum {string}
+             */
+            shift_state?: "SCHEDULED" | "ACTIVE" | "ENDED";
+            staff_name?: string;
+            building_name?: string;
+            park_org_id?: string | null;
+            park_name?: string | null;
         };
         VerificationError: components["schemas"]["Error"];
         ManagedUserList: {
@@ -3880,6 +3947,51 @@ export interface components {
         DutyAssignmentList: {
             items: components["schemas"]["DutyAssignment"][];
             next_cursor: string | null;
+        };
+        /** @description 一栋一位固定值守人的班次段落；窗口是每晚重复的时刻（HH:MM），跨零点由服务端回绕判定，不是时间戳。 */
+        DutyRosterItem: {
+            roster_id: string;
+            building_id: string;
+            building_name: string;
+            park_org_id?: string | null;
+            park_name?: string | null;
+            staff_user_id: string;
+            staff_name: string;
+            /** @description 每晚重复的上岗时刻，HH:MM */
+            shift_start: string;
+            /** @description 每晚重复的离岗时刻，HH:MM；早于开始即跨零点 */
+            shift_end: string;
+            /** Format: date */
+            valid_from: string;
+            /** Format: date */
+            valid_to?: string | null;
+            /** @description 生效区间是否覆盖当前业务夜——值守范围看这条（R11） */
+            covers_tonight: boolean;
+            /** @description 此刻是否落在重复班次窗口内，仅展示 */
+            on_duty_now: boolean;
+        };
+        DutyRosterList: {
+            items: components["schemas"]["DutyRosterItem"][];
+            next_cursor: string | null;
+        };
+        DutyRosterRequest: {
+            building_id: string;
+            staff_user_id: string;
+            /** @description 缺省 18:00 */
+            shift_start?: string;
+            /** @description 缺省次日 06:00 */
+            shift_end?: string;
+            /**
+             * Format: date
+             * @description 缺省当前业务夜
+             */
+            valid_from?: string;
+            /** Format: date */
+            valid_to?: string | null;
+        };
+        DutyRosterRevokeRequest: {
+            building_id: string;
+            staff_user_id: string;
         };
         /** @description 日按前一/当前业务夜；周月按前一夜所在自然周/月截至前一夜。多次阈值配置化。仅人数，不含名单。 */
         SchoolOverview: {
@@ -4134,6 +4246,124 @@ export interface operations {
             };
             /** @description 动作或数据范围被拒 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "get_duty-roster": {
+        parameters: {
+            query?: {
+                building_id?: string;
+                /** @description 园区可按人筛；非园区角色一律忽略并按本人收窄 */
+                staff_user_id?: string;
+                park_org_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyRosterList"];
+                };
+            };
+            /** @description 动作、范围或输入被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "post_duty-roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DutyRosterRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyRosterItem"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 缺少字段、窗口起止相同或失效日期不晚于生效日期 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "post_duty-roster_revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DutyRosterRevokeRequest"];
+            };
+        };
+        responses: {
+            /** @description 成功，返回被卸任的那一行 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyRosterItem"];
+                };
+            };
+            /** @description 动作或数据范围被拒 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 该楼栋没有这位固定负责人（DUTY_ROSTER_NOT_FOUND） */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

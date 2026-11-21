@@ -135,11 +135,30 @@ def update_account(
     return account
 
 
+def unbind_building(session: Session, account_id: str, building_id: str) -> None:
+    """参加调用方事务的楼栋解绑；行锁避免覆盖园区并发修改，不自行提交。"""
+    account = session.scalar(
+        _local_only().where(User.user_id == account_id).with_for_update()
+    )
+    if account is not None and building_id in account.building_ids:
+        account.building_ids = [value for value in account.building_ids if value != building_id]
+        session.flush()
+
+
 def reset_password(session: Session, account_id: str) -> tuple[User, str]:
     account = get_account(session, account_id)
     account.password = generate_password()
     session.commit()
     return account, account.password
+
+
+def remove_building_binding(session: Session, account_id: str, building_id: str) -> None:
+    """参与调用方事务的楼栋解绑；与名册撤权原子完成，不自行提交。"""
+    account = session.scalar(
+        _local_only().where(User.user_id == account_id).with_for_update()
+    )
+    if account is not None:
+        account.building_ids = [b for b in account.building_ids if b != building_id]
 
 
 def disable(session: Session, clock: Clock, account_id: str) -> User:
@@ -220,3 +239,11 @@ def active_staff(user_ids):
     if not user_ids:return []
     with _open_session() as db:
         return list(db.scalars(select(User.user_id).where(User.user_id.in_(user_ids),User.status=="ACTIVE",User.source==STAFF_LOCAL)))
+
+
+def demo_login_account_ids(password: str) -> set[str]:
+    """仅供演示快捷登录筛选；已重置口令的工号账号必须手工登录，不返回其口令。"""
+    with _open_session() as db:
+        return set(db.scalars(select(User.user_id).where(
+            User.source == STAFF_LOCAL, User.status == "ACTIVE", User.password == password
+        )))

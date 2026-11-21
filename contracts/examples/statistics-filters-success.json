@@ -17,65 +17,65 @@
     {
       "org_id": "campus_park_west1",
       "name": "西一区",
-      "building_count": 1
+      "building_count": 17
     },
     {
       "org_id": "campus_park_west2",
       "name": "西二区",
-      "building_count": 1
+      "building_count": 10
     },
     {
       "org_id": "campus_park_west3",
       "name": "西三区",
-      "building_count": 1
+      "building_count": 16
     },
     {
       "org_id": "campus_park_west4",
       "name": "西四区",
-      "building_count": 1
+      "building_count": 13
     },
     {
       "org_id": "campus_park_west5",
       "name": "西五区",
-      "building_count": 1
+      "building_count": 15
     },
     {
       "org_id": "campus_park_east1",
       "name": "东一区",
-      "building_count": 2
+      "building_count": 15
     },
     {
       "org_id": "campus_park_east2",
       "name": "东二区",
-      "building_count": 1
+      "building_count": 5
     },
     {
       "org_id": "campus_park_east3",
       "name": "东三区",
-      "building_count": 1
+      "building_count": 8
     },
     {
       "org_id": "campus_park_east4",
       "name": "东四区",
-      "building_count": 0
+      "building_count": 8
     }
   ],
   "buildings": [
     {
       "building_id": "bldg_a1",
-      "name": "A1 号楼",
+      "name": "东1 号楼",
       "code": "A1",
       "park_org_id": "campus_park_east1"
     },
     {
       "building_id": "bldg_a2",
-      "name": "A2 号楼",
+      "name": "东2 号楼",
       "code": "A2",
       "park_org_id": "campus_park_east1"
     },
     {
       "building_id": "bldg_a3",
-      "name": "A3 号楼",
+      "name": "西8 号楼",
       "code": "A3",
       "park_org_id": "campus_park_west1"
     }

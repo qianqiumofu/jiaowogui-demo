@@ -1,0 +1,9 @@
+{
+  "code": "DUTY_ROSTER_NOT_FOUND",
+  "message": "该楼栋没有这位固定负责人，无需卸任。",
+  "request_id": "req_synth_0013",
+  "details": {
+    "building_id": "bldg_a2",
+    "staff_user_id": "usr_synth_0003"
+  }
+}

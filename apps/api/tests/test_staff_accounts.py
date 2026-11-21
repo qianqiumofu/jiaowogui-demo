@@ -213,3 +213,24 @@ def test_list_hides_passwords_and_keeps_list_shape(client, clean_db) -> None:
     assert set(body) == {"items", "next_cursor"}
     assert body["next_cursor"] is None
     assert all("password" not in item for item in body["items"])
+
+
+def test_demo_shortcuts_exclude_staff_after_password_reset(client, clean_db):
+    """快捷体验不得承诺已失效的默认口令，也不得暴露重置后的私有口令。"""
+    from app.core.config import get_settings
+    from app.core.db import get_engine
+    from sqlalchemy import text
+
+    before = client.get(f"{API}/auth/demo-accounts").json()
+    assert "dorm" in {row["login_name"] for row in before}
+    campus = auth(token_for(client, "campus"))
+    try:
+        response = client.post(f"{API}/staff-accounts/usr_synth_0003/reset-password", headers=campus)
+        assert response.status_code == 200, response.text
+        after = client.get(f"{API}/auth/demo-accounts")
+        assert "dorm" not in {row["login_name"] for row in after.json()}
+        assert response.json()["initial_password"] not in after.text
+    finally:
+        with get_engine().begin() as conn:
+            conn.execute(text("UPDATE users SET password=:password WHERE user_id='usr_synth_0003'"),
+                         {"password": get_settings().demo_login_password})

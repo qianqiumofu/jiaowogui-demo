@@ -82,10 +82,6 @@ _ASSIGNED_STUDENTS_SQL = text(
     """
 )
 
-_DUTY_BUILDINGS_SQL=text("SELECT DISTINCT building_id FROM duty_assignments WHERE staff_user_id=:staff_user_id AND shift_start<=:at AND shift_end>:at ORDER BY building_id")
-
-_DUTY_STAFF_SQL=text("SELECT DISTINCT staff_user_id FROM duty_assignments WHERE building_id=:building_id AND shift_start<=:at AND shift_end>:at ORDER BY staff_user_id")
-
 _CONTACT_SQL = text(
     """
     SELECT s.student_id,
@@ -180,19 +176,70 @@ def get_assigned_students(counselor_user_id: str, at: datetime) -> list[str]:
     return list(rows)
 
 
+def validate_duty_subjects(conn, staff_user_id: str, building_id: str) -> None:
+    """值班登记通过目录验证人员和楼栋存在性，参与调用方事务。"""
+    from app.core.errors import ApiError
+    for field, value, query in (
+        ("staff_user_id", staff_user_id, "SELECT 1 FROM users WHERE user_id=:value"),
+        ("building_id", building_id, "SELECT 1 FROM buildings WHERE building_id=:value"),
+    ):
+        if conn.execute(text(query), {"value": value}).first() is None:
+            raise ApiError(422, "VALIDATION_FAILED", "人员或楼栋不在目录中，无法授权。", {"field": field, field: value})
+
+
+def duty_labels(conn, staff_user_ids: list[str], building_ids: list[str]) -> tuple[dict, dict]:
+    """值班模块的目录读出口，批量返回人员与楼栋标签，避免跨模块直查目录表。"""
+    people = dict(conn.execute(text(
+        "SELECT user_id,display_name FROM users WHERE user_id=ANY(:ids)"
+    ), {"ids": staff_user_ids}).all()) if staff_user_ids else {}
+    buildings = {
+        row["building_id"]: dict(row) for row in conn.execute(text("""
+            SELECT b.building_id,b.name AS building_name,b.campus_org_id AS park_org_id,o.name AS park_name
+            FROM buildings b JOIN organizations o ON o.org_id=b.campus_org_id
+            WHERE b.building_id=ANY(:ids)
+        """), {"ids": building_ids}).mappings()
+    } if building_ids else {}
+    return people, buildings
+
+
+def assert_duty_subjects(conn, staff_user_id: str, building_id: str) -> None:
+    from app.core.errors import ApiError
+    people, buildings = duty_labels(conn, [staff_user_id], [building_id])
+    for field, value, known in (("staff_user_id", staff_user_id, people), ("building_id", building_id, buildings)):
+        if value not in known:
+            raise ApiError(422, "VALIDATION_FAILED", "该人员或楼栋不在目录中，无法授权。", {"field": field, field: value})
+
+
 def get_duty_buildings(staff_user_id: str, at: datetime) -> list[str]:
-    from app.modules.identity.staff_accounts import fixed_buildings,active_staff
-    if not active_staff([staff_user_id]):return []
-    with get_engine().connect() as conn:
-        assigned=list(conn.execute(_DUTY_BUILDINGS_SQL,{"staff_user_id":staff_user_id,"at":at}).scalars())
-    return sorted(set(assigned)|set(fixed_buildings(staff_user_id)))
+    """这一夜能打开今晚名单的楼栋：固定名册 ∪ 当夜代班 ∪ 工号账号绑定的楼栋，停用账号一律不给范围（R19）。
+
+    第三条口子是基线已交付的园区授权（建号即绑楼，`staff_accounts` 主责），不并进来会当场判 403，
+    白天补录返宿记录也进不去自己那栋。名册页卸任后账号若仍绑着那栋，范围收不干净，
+    这条收敛要 A 侧改，已写进《给A-值班授权改由园区端签发-需评审.md》。
+    """
+    from app.modules.duty import service as duty
+    from app.modules.identity.staff_accounts import active_staff, fixed_buildings
+
+    if not active_staff([staff_user_id]):
+        return []
+    return sorted(set(duty.on_duty_buildings(staff_user_id, at)) | set(fixed_buildings(staff_user_id)))
 
 
 def get_duty_staff(building_id: str, at: datetime) -> list[str]:
-    from app.modules.identity.staff_accounts import fixed_staff,active_staff
-    with get_engine().connect() as conn:
-        assigned=list(conn.execute(_DUTY_STAFF_SQL,{"building_id":building_id,"at":at}).scalars())
-    return sorted(set(active_staff(assigned))|set(fixed_staff(building_id)))
+    from app.modules.duty import service as duty
+    from app.modules.identity.staff_accounts import active_staff, fixed_staff
+
+    return sorted(
+        set(active_staff(duty.building_duty_staff(building_id, at))) | set(fixed_staff(building_id))
+    )
+
+
+def get_fixed_watch_staff(building_id: str, at: datetime) -> list[str]:
+    """仅查询固定名册中的有效人员；业务权限和风险收件仍用 get_duty_staff。"""
+    from app.modules.duty import service as duty
+    from app.modules.identity.staff_accounts import active_staff
+
+    return sorted(set(active_staff(duty.fixed_watch_staff(building_id, at))))
 
 
 def is_on_duty(staff_user_id: str, building_id: str, at: datetime) -> bool:
@@ -271,9 +318,10 @@ def student_directory(context, filters=None):
     with get_engine().connect() as conn:
         rows=[dict(r) for r in conn.execute(text("""
             SELECT s.student_id,s.school_id,s.display_name,s.college_org_id,o.name AS college_name,
-                   s.grade,s.major,s.class_name,r.building_id
+                   s.grade,s.major,s.class_name,r.building_id,b.name AS building_name
             FROM students s JOIN organizations o ON o.org_id=s.college_org_id
             LEFT JOIN residences r ON r.student_id=s.student_id AND r.valid_to IS NULL
+            LEFT JOIN buildings b ON b.building_id=r.building_id
             ORDER BY s.school_id
         """)).mappings()]
     role=context.active_role.value
@@ -336,8 +384,27 @@ def all_college_ids():
 
 
 def snapshot_buildings(at):
+    """该出 24:00 晚归单的楼栋：只算当日有在册住宿的那几栋，不是整个楼栋目录。
+
+    演示目录按公开住宿指南登记了 107 栋，学生只排进其中十栋。按目录全量排任务会带来两个后果：
+    每个 worker tick 写入「楼栋数 × 回看夜数」条空名单任务，而 `claim_due_jobs` 按 `planned_at`
+    排序、单轮只取 `worker_batch_size` 条，空任务会把日报、周报这类真任务挤出批次。
+    """
     with get_engine().connect() as conn:
-        return list(conn.execute(text("SELECT building_id FROM buildings ORDER BY building_id")).scalars())
+        return list(
+            conn.execute(
+                text(
+                    """
+                    SELECT DISTINCT building_id
+                    FROM residences r
+                    WHERE r.valid_from <= :service_date
+                      AND (r.valid_to IS NULL OR r.valid_to > :service_date)
+                    ORDER BY building_id
+                    """
+                ),
+                {"service_date": service_date_of(at)},
+            ).scalars()
+        )
 
 
 def duty_rows():

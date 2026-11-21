@@ -241,16 +241,22 @@ def write_snapshot(
 
 
 def responsible_staff(building_id: str, at: datetime) -> list[dict]:
-    """沿用当前固定楼栋与有效代班并集，不引入包内一人一栋的新规则。"""
-    from app.modules.identity import service as identity, staff_accounts
-    fixed = set(staff_accounts.fixed_staff(building_id))
-    result = []
-    for user_id in sorted(directory.get_duty_staff(building_id, at)):
-        person = identity.person_by_user_id(user_id)
-        if person:
-            result.append({'user_id': user_id, 'display_name': person.display_name,
-                           'kind': 'FIXED' if user_id in fixed else 'SUBSTITUTE'})
-    return result
+    """这一夜该楼栋的负责人：固定在前、代班在后，24:00 汇总就按这份名单冻结。
+
+    取的是「那一夜谁负责」而不是「此刻谁在岗」——晚归单要事后答得出某栋某夜归谁，而固定班
+    按业务夜整段生效（R11），所以不乘班次窗口。范围只认 B 的值班名册，不读 A 的工号账号
+    `building_ids`：那是账号登记信息，改人之后它会滞后，拿它判 `kind` 会把刚卸任的标成固定。
+    """
+    from app.modules.duty import service as duty
+
+    return [
+        {
+            "user_id": str(row["staff_user_id"]),
+            "display_name": str(row["display_name"]),
+            "kind": "SUBSTITUTE" if row["is_substitute"] else "FIXED",
+        }
+        for row in duty.night_roster(building_id, service_date_of(at))
+    ]
 
 
 def night_summary(at: datetime, service_day: date | None = None,

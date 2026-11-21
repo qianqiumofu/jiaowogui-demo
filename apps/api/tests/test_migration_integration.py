@@ -34,7 +34,7 @@ def test_migration_preserves_legacy_a_accounts_and_roundtrips(postgres_schema, o
                         '["bldg_a1"]', 'ACTIVE', :at, :at)
             """), {"at": created, "id": "usr_staff_" + "x" * 24, "login": "x" * 64, "name": "合" * 80})
         command.upgrade(cfg, "head")
-        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0021"
+        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0022"
         assert conn.execute(text("SELECT data_type FROM information_schema.columns WHERE table_schema=:schema AND table_name='export_jobs' AND column_name='scope_student_ids'"), {"schema": schema}).scalar() == "jsonb"
         assert conn.execute(text("SELECT to_regclass('local_staff_accounts')")).scalar() is None
         if old_a_database:

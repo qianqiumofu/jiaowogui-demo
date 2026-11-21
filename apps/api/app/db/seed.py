@@ -1,9 +1,11 @@
 """合成演示数据（B 主责）。全部为合成值，禁止真实姓名、学号、人脸与联系方式。
 
 固定 ID 与场景约定见 docs/10-演示数据与账号.md：
-闵行校区 9 个片区（西一—西五、东一—东四）；stu_synth_0001—0012 住 bldg_a1，0013—0024 住 bldg_a2，
+闵行校区 9 个片区共 107 栋（楼栋目录见 `_NUMBERED_BLOCKS`，ID 与展示名一并保留场景楼那十栋）；
+stu_synth_0001—0012 住 bldg_a1，0013—0024 住 bldg_a2，
 0025 起每 6 人住 bldg_a3—bldg_a9；李辅导员负责 0001—0006；
-王宿管每晚主值 bldg_a1，23:00 起代班 bldg_a2；其余楼栋只登记不排班（宿管范围仍只有 A1/A2）。
+王宿管固定主值 bldg_a1（长期名册 `building_duty_roster`，18:00—次日 06:00），23:00 起代班 bldg_a2；
+其余楼栋只登记不排班（宿管范围仍只有 A1/A2）。
 楼栋性别单一（男生/女生宿舍），A1/A3/A5/A7/A9 为 MALE，A2/A4/A6/A8 为 FEMALE。
 默认再写入演示夜之前 `HISTORY_NIGHTS` 个业务夜的合成返宿历史，供园区端统计出真数字；
 `--no-history` 可关闭（今晚名单与扫码闭环的主演示不依赖它）。
@@ -27,6 +29,7 @@ from app.db.base import Base
 from app.db.models import (
     BackgroundJob,
     Building,
+    BuildingDutyRoster,
     CounselorAssignment,
     Device,
     DutyAssignment,
@@ -56,19 +59,69 @@ PARKS = [
     ("campus_park_east3", "东三区"),
     ("campus_park_east4", "东四区"),
 ]
-# A1/A2 保留原有 ID 与园区归属串：两人的测试与交接文档都锚在这两栋（docs/10）。
-BUILDINGS = [
-    ("bldg_a1", "campus_park_east1", "A1 号楼", "A1"),
-    ("bldg_a2", "campus_park_east1", "A2 号楼", "A2"),
-    ("bldg_a3", "campus_park_west1", "A3 号楼", "A3"),
-    ("bldg_a4", "campus_park_west2", "A4 号楼", "A4"),
-    ("bldg_a5", "campus_park_west3", "A5 号楼", "A5"),
-    ("bldg_a6", "campus_park_west4", "A6 号楼", "A6"),
-    ("bldg_a7", "campus_park_west5", "A7 号楼", "A7"),
-    ("bldg_a8", "campus_park_east2", "A8 号楼", "A8"),
-    ("bldg_a9", "campus_park_east3", "A9 号楼", "A9"),
+# 楼栋目录照学校公开的《2026 新生住宿指南之楼栋分布篇》登记：9 个片区共 107 栋。
+# 真实的是楼号与归属片区，学生、门点与返宿记录全是合成值。
+# 思源北苑（吴泾教育园区，10 栋高层博士生公寓 + 1 栋学生服务中心）不在本目录内：
+# 它不在东川路 800 号本校区，且博士生公寓是否纳入晚归统计待学校确认（docs/13）。
+_NUMBERED_BLOCKS = [
+    ("campus_park_west1", "西", 8, 24),
+    ("campus_park_west2", "西", 25, 34),
+    ("campus_park_west3", "西", 35, 49),
+    ("campus_park_west4", "西", 50, 62),
+    ("campus_park_west5", "西", 63, 70),
+    ("campus_park_west5", "西", 81, 87),
+    ("campus_park_east1", "东", 1, 14),
+    ("campus_park_east2", "东", 15, 19),
+    ("campus_park_east3", "东", 20, 27),
+    ("campus_park_east4", "东", 28, 35),
 ]
-# 门点与终端只在演示主楼栋落地；其余片区楼栋只登记住宿，不排班、不签码。
+# 编号之外的楼栋：西43B 是文中单列的独立公寓（只有它不是套间布局），code 用「本号+字母」
+# 让 ORDER BY code 把它紧跟在西43 后面；蓁蓁楼没有楼号，code 用同片区前缀 + 9 字头序号占位，
+# 排在所在片区的编号楼之后。
+# 指南里的「智慧能源8号楼」按需求方 2026-11-18 要求不登记进演示目录（docs/13）。
+_NAMED_BUILDINGS = [
+    ("bldg_w43b", "campus_park_west3", "西43B 楼", "西43B"),
+    ("bldg_e99", "campus_park_east1", "蓁蓁楼", "东99"),
+]
+_PREFIX_SLUG = {"西": "w", "东": "e"}
+# 今晚名单与扫码场景的十栋保留合成时代的 ID 与 code：A 的测试、门点终端名、寝室号
+# （A1-301）和 docs/14 都写死了这两串，换 ID 等于把对方的用例一起改掉。这里只换展示名。
+_SCENE_BUILDINGS = {
+    ("campus_park_east1", 1): ("bldg_a1", "A1"),
+    ("campus_park_east1", 2): ("bldg_a2", "A2"),
+    ("campus_park_west1", 8): ("bldg_a3", "A3"),
+    ("campus_park_west2", 25): ("bldg_a4", "A4"),
+    ("campus_park_west3", 35): ("bldg_a5", "A5"),
+    ("campus_park_west4", 50): ("bldg_a6", "A6"),
+    ("campus_park_west5", 63): ("bldg_a7", "A7"),
+    ("campus_park_east2", 15): ("bldg_a8", "A8"),
+    ("campus_park_east3", 20): ("bldg_a9", "A9"),
+    # a10 只在千人体验里排学生与终端（`app/db/experience.py` 的 gate_a10_north），
+    # 留在目录外就成了「107 栋 + 一栋 A10 号楼」，楼栋下拉里会露出一个不存在的楼号。
+    ("campus_park_east4", 28): ("bldg_a10", "A10"),
+}
+
+
+def _numbered_buildings() -> list[tuple[str, str, str, str]]:
+    rows: list[tuple[str, str, str, str]] = []
+    for park, prefix, first, last in _NUMBERED_BLOCKS:
+        for number in range(first, last + 1):
+            scene = _SCENE_BUILDINGS.get((park, number))
+            code = f"{prefix}{number:02d}"
+            rows.append(
+                (
+                    scene[0] if scene else f"bldg_{_PREFIX_SLUG[prefix]}{number:02d}",
+                    park,
+                    f"{prefix}{number} 号楼",
+                    scene[1] if scene else code,
+                )
+            )
+    return rows
+
+
+BUILDINGS = _numbered_buildings() + _NAMED_BUILDINGS
+BUILDING_NAMES = {building_id: name for building_id, _park, name, _code in BUILDINGS}
+# 门点与终端只在演示主楼栋落地；其余楼栋只登记不排班、不签码。
 GATES = [("gate_a1_north", "bldg_a1", "A1 北门"), ("gate_a2_north", "bldg_a2", "A2 北门")]
 DEVICES = [("dev_synth_a1_01", "gate_a1_north", "A1 北门终端"), ("dev_synth_a2_01", "gate_a2_north", "A2 北门终端")]
 DEMO_BUILDING_IDS = ("bldg_a1", "bldg_a2")
@@ -76,6 +129,7 @@ STAFF_LOCAL = AccountSource.STAFF_LOCAL.value
 
 # (user_id, school_id, 姓名, 登录名, 账号来源, 固定管理楼栋)。工号账号没有校内邮箱，
 # `source=STAFF_LOCAL`；口令由 `main()` 写入 Demo 合成值，与 `dorm` 种子登录保持一致。
+# 王宿管的 `bldg_a1` 与名册里的固定值守一致：账号绑定是园区建号时的授权，名册是当晚排班，两份要指同一栋。
 USERS = [
     ("usr_synth_0001", "2023S0001", "张三（学生）", "student", AccountSource.UNIFIED_SCHOOL.value, []),
     ("usr_synth_0002", "T2001", "李辅导员", "counselor", AccountSource.UNIFIED_SCHOOL.value, []),
@@ -163,15 +217,19 @@ def _history_rows(
 
 
 def _student_slot(index: int) -> tuple[str, str]:
-    """学生在册楼栋与寝室号：前 24 人维持 A1/A2 原编号，之后每 6 人进 A3—A9。"""
+    """学生在册楼栋与寝室号：前 24 人维持 A1/A2 原编号，之后每 6 人进 bldg_a3—a9。
+
+    A1/A2 的寝室号沿用 `A1-301` 这一串：今晚名单、补录与 24:00 汇总的用例和门牌都写着它。
+    其余楼栋的寝室号取楼栋展示名的短名（如 `西8-401`），房号前缀才和楼栋下拉里的名字对得上。
+    """
     if index < 12:
         return "bldg_a1", f"A1-{301 + index}"
     if index < DEMO_STUDENT_COUNT:
         return "bldg_a2", f"A2-{301 + index - 12}"
     extra = index - DEMO_STUDENT_COUNT
-    building_index = extra // EXTRA_PER_BUILDING
-    code = f"A{building_index + 3}"
-    return f"bldg_{code.lower()}", f"{code}-{401 + extra % EXTRA_PER_BUILDING}"
+    building = f"bldg_a{extra // EXTRA_PER_BUILDING + 3}"
+    short_name = BUILDING_NAMES[building].removesuffix(" 号楼")
+    return building, f"{short_name}-{401 + extra % EXTRA_PER_BUILDING}"
 
 
 def _student_row(index: int) -> tuple[Student, str, str]:
@@ -203,21 +261,29 @@ def _local(night: date, hour: int, tz: ZoneInfo, minute: int = 0) -> datetime:
     return datetime.combine(night, time(hour, minute), tzinfo=tz)
 
 
+def _roster_rows() -> list[BuildingDutyRoster]:
+    """固定值守名册：王宿管长期主值 bldg_a1，整夜窗口 18:00—次日 06:00。
+
+    逐夜主值不再写 `duty_assignments`（那张表只剩按夜的代班），所以阿姨能打开哪栋楼的
+    今晚名单由名册现算，园区端不需要每晚点一次授权（R11）。
+    """
+    return [
+        BuildingDutyRoster(
+            roster_id="roster_bldg_a1_usr_synth_0003",
+            building_id=DEMO_BUILDING_IDS[0],
+            staff_user_id="usr_synth_0003",
+            shift_start=time(MAIN_SHIFT_START_HOUR, 0),
+            shift_end=time(NIGHT_END_HOUR, 0),
+            valid_from=RESIDENCE_START,
+        )
+    ]
+
+
 def _duty_rows(tz: ZoneInfo, nights: list[date]) -> list[DutyAssignment]:
+    """按夜代班：固定主值 bldg_a1 的王宿管，23:00 起再多管 bldg_a2（测试锚死这个边界）。"""
     rows: list[DutyAssignment] = []
     for night in nights:
         night_end = _local(night + timedelta(days=1), NIGHT_END_HOUR, tz)
-        rows.append(
-            DutyAssignment(
-                duty_id=f"duty_a1_{night.isoformat()}",
-                staff_user_id="usr_synth_0003",
-                building_id=DEMO_BUILDING_IDS[0],
-                service_date=night,
-                shift_start=_local(night, MAIN_SHIFT_START_HOUR, tz),
-                shift_end=night_end,
-                is_substitute=False,
-            )
-        )
         rows.append(
             DutyAssignment(
                 duty_id=f"duty_a2_{night.isoformat()}",
@@ -339,6 +405,7 @@ def seed(engine: Engine, today: date, tz_name: str, with_history: bool = True) -
         for student in students[:6]:
             if student.college_org_id==COLLEGES[0][0]:
                 session.add(CounselorAssignment(assignment_id=f"ca_parttime_{student.student_id}",counselor_user_id="usr_synth_0009",student_id=student.student_id,valid_from=RESIDENCE_START))
+        session.add_all(_roster_rows())
         session.add_all(_duty_rows(tz, nights))
         session.add_all(_snapshot_jobs(nights, tz))
         if with_history:

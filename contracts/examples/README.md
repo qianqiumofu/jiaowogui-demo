@@ -26,7 +26,12 @@
 | `error-notification-template-mismatch.json` | 模板与收件人角色不匹配（422） | A |
 | `error-forbidden-staff-account.json` | 宿管调用账号管理接口被拒（`staff_account:*` 仅园区） | A |
 | `error-account-disabled.json` | 已停用工号账号登录被拒（403） | A |
-| `error-forbidden-duty-switch.json` | 辅导员调用代班切换被拒（duty:switch 仅宿管） | B |
+| `error-forbidden-duty-switch.json` | 辅导员调用代班切换被拒（duty:switch 仅园区） | B |
+| `duty-roster-list-success.json` | 园区端楼栋固定值班名册：同一栋并排夜班与白班两位，`on_duty_now` 只有夜班那位为真 | B |
+| `duty-roster-request.json` | 给某栋登记/更换固定值班负责人（缺省生效日即当前业务夜，窗口是每晚重复的时刻） | B |
+| `duty-roster-set-success.json` | 写入后回读的那一行固定班 | B |
+| `duty-roster-revoke-success.json` | 卸任某栋某位固定负责人，返回被卸掉的那一行 | B |
+| `error-duty-roster-not-found.json` | 卸任时该楼栋没有这位固定负责人（404，必须指到人） | B |
 | `error-scope-unresolved.json` | 负责关系或住宿归属缺失 | B 目录 / A 判定 |
 | `error-out-of-scope.json` | 指定资源不在当前有效范围内（如代班未生效） | B |
 | `buildings-tonight-success.json` | 24:00 汇总后含改期、撤销异动与门禁通行情况的当晚名单 | B |

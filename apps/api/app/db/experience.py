@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from types import SimpleNamespace
 
@@ -13,7 +13,7 @@ from app.core.clock import Clock, build_clock, service_date_of
 from app.core.config import get_settings
 from app.db import seed as small
 from app.db.models import (
-    Building, CounselorAssignment, Device, DutyAssignment, Gate, Organization,
+    BuildingDutyRoster, CounselorAssignment, Device, DutyAssignment, Gate, Organization,
     Residence, RoleAssignment, Student, User,
 )
 from app.modules.reservation import service as reservations
@@ -46,8 +46,7 @@ def populate(engine, today: date, tz_name: str = "Asia/Shanghai"):
     with Session(engine) as db:
         db.add_all(Organization(org_id=oid, org_type="COLLEGE", name=name) for oid, name in COLLEGES[3:])
         db.flush()
-        db.add(Building(building_id="bldg_a10", campus_org_id="campus_park_east4", name="A10 号楼", code="A10"))
-        db.flush()
+        # bldg_a10 现在由 `seed._SCENE_BUILDINGS` 作为「东28 号楼」登记进 107 栋目录，这里不再单插一行。
         for b in range(3, 11):
             db.add(Gate(gate_id=f"gate_a{b}_north", building_id=f"bldg_a{b}", name=f"A{b} 北门"))
         db.flush()
@@ -141,6 +140,7 @@ def populate(engine, today: date, tz_name: str = "Asia/Shanghai"):
             db.add_all(CounselorAssignment(assignment_id=f"exp_ci_{s.student_id}", counselor_user_id=uid,
                                          student_id=s.student_id, valid_from=small.RESIDENCE_START) for s in assigned)
         db.execute(delete(DutyAssignment))
+        db.execute(delete(BuildingDutyRoster))
         for b in range(1, 11):
             for shift in ("day", "night"):
                 uid = "usr_synth_0003" if b == 1 and shift == "night" else f"usr_exp_d{b}_{shift}"
@@ -153,12 +153,12 @@ def populate(engine, today: date, tz_name: str = "Asia/Shanghai"):
                 staff.password = get_settings().demo_login_password
                 staff.building_ids = [f"bldg_a{b}"]
                 db.flush()
-                for offset in range(-HISTORY_NIGHTS, small.DUTY_WINDOW_AFTER + 1):
-                    night = today + timedelta(days=offset)
-                    start = small._local(night, 6 if shift == "day" else 18, tz)
-                    db.add(DutyAssignment(duty_id=f"exp_d{b}_{shift}_{night}", staff_user_id=uid,
-                                          building_id=f"bldg_a{b}", service_date=night,
-                                          shift_start=start, shift_end=start+timedelta(hours=12), is_substitute=False))
+                # 固定值守是名录事实：一栋一人一行、窗口是每晚重复的时刻，不再逐夜写 duty_assignments。
+                db.add(BuildingDutyRoster(
+                    roster_id=f"exp_roster_{b}_{shift}", building_id=f"bldg_a{b}", staff_user_id=uid,
+                    shift_start=time(6 if shift == "day" else 18, 0),
+                    shift_end=time(18 if shift == "day" else 6, 0),
+                    valid_from=small.RESIDENCE_START))
         # 原固定账号继续演示跨楼栋代班；23:00 起生效。
         db.add(DutyAssignment(duty_id="exp_substitute", staff_user_id="usr_synth_0003", building_id="bldg_a2",
                               service_date=today, shift_start=small._local(today, 23, tz),
